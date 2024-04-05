@@ -24,3 +24,7 @@ web-ext.config.ts
 *.njsproj
 *.sln
 *.sw?
+
+## Panda
+styled-system
+styled-system-studio
