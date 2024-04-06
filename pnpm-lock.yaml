@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@park-ui/cli':
+    specifier: ^0.6.0
+    version: 0.6.0
   '@webext-core/proxy-service':
     specifier: ^1.2.0
     version: 1.2.0(@webext-core/messaging@1.4.0)(webextension-polyfill@0.10.0)
@@ -1010,6 +1013,11 @@ packages:
   /@pandacss/types@0.37.1:
     resolution: {integrity: sha512-JaI/UD1FAiHhaq81PgyltXB/J8eA+WHyZG3B7KmTvkqVz2S6r0kSp6w7Wh0D9xwykjh+OfBkNFqLCKFBQ1deuA==}
     dev: true
+
+  /@park-ui/cli@0.6.0:
+    resolution: {integrity: sha512-KV/sEhrd2O272BoqZpVw2OEyNCp2DqSYSUhs8+8iMMwohJN36dcOZ+AqLKSOKJQ8CW08r6gVx4FU7KTvUuCbLg==}
+    hasBin: true
+    dev: false
 
   /@pnpm/config.env-replace@1.1.0:
     resolution: {integrity: sha512-htyl8TWnKL7K/ESFa1oW2UB5lVDxuF5DpM7tBi6Hu2LNL3mWkIzNLG6N4zoCUP1lCKNxWy/3iu8mS8MvToGd6w==}

@@ -15,6 +15,7 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@park-ui/cli": "^0.6.0",
     "@webext-core/proxy-service": "^1.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
