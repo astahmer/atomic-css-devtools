@@ -1,26 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { css } from "../../styled-system/css";
-import { Box, Flex, Stack, styled } from "../../styled-system/jsx";
-import {
-  MatchResult,
-  MatchedLayerBlockRule,
-  MatchedMediaRule,
-  MatchedRule,
-  MatchedStyleRule,
-  evaluator,
-} from "./eval";
-import { compileQuery, matches, toEnglishString } from "media-query-fns";
+import { Box, Center, Flex, Stack, styled } from "../../styled-system/jsx";
+import { MatchResult, MatchedStyleRule, evaluator } from "./eval";
 
-import { ChevronDownIcon } from "lucide-react";
-import * as Accordion from "#components/accordion";
-import { Button } from "../../components/button";
 import { isColor } from "./is-color";
 
+import { Editable } from "@ark-ui/react";
+
+import * as Tooltip from "#components/tooltip";
+import { Portal } from "@ark-ui/react";
+
+import { IconButton } from "#components/icon-button";
+import * as Toast from "#components/toast";
+import { createToaster } from "@ark-ui/react/toast";
+import { XIcon } from "lucide-react";
+import { computeStyles, sortRules } from "./rules";
+
 export function SidebarPane() {
-  const [result, setResult] = useState(
-    null as Awaited<ReturnType<typeof evaluator.inspectElement>> | null
-  );
+  const [result, setResult] = useState(null as MatchResult | null);
   const size = useWindowSize();
+
+  useEffect(() => {
+    return evaluator.onSelectionChanged((update) => {
+      console.log(update);
+      setResult(update);
+    });
+  }, []);
 
   const sorted = useMemo(
     () => (result ? sortRules(result.rules, { ...result.env, ...size }) : []),
@@ -28,34 +33,35 @@ export function SidebarPane() {
   );
   const { styles, order } = computeStyles(sorted);
 
+  if (!result) {
+    return (
+      <Center px="4" h="100%">
+        <Stack textStyle="2xl" fontFamily="sans-serif">
+          Select an element in the element panel
+        </Stack>
+      </Center>
+    );
+  }
+
   return (
     <>
-      <Button
-        onClick={async () => {
-          const result = await evaluator.inspectElement();
-          console.log(result);
-          setResult(result);
-        }}
-      >
-        run
-      </Button>
-      {/* <Demo /> */}
+      <Toaster />
       {result && (
-        <Stack>
+        <Stack px="4" fontFamily="sans-serif">
           <Box textStyle="lg">
             {"<"}
             {result.displayName}
             {">"} matched {result?.rules?.length} rules
           </Box>
-          <code>{result.classes}</code>
+          <code>{result.classes.join(" ")}</code>
           <Flex
             direction="column"
             textStyle="sm"
             fontFamily="monospace"
             fontSize="11px"
             lineHeight="1.2"
-            px="4"
           >
+            {/* TODO style */}
             {Object.keys(result.style).map((key) => {
               const value = result.style[key] as string;
 
@@ -74,9 +80,6 @@ export function SidebarPane() {
                     />
                   )}
                   <styled.span>{value}</styled.span>
-                  {/* <styled.span opacity="0.4" ml="6px">
-                    {"// style"}
-                  </styled.span> */}
                   <styled.span ml="auto" opacity="0.7">
                     style
                   </styled.span>
@@ -84,14 +87,16 @@ export function SidebarPane() {
               );
             })}
             <styled.hr my="1" opacity="0.2" />
-            {Array.from(order).map((key) => {
+            {/* TODO layer separation */}
+            {/* TODO media separation */}
+            {Array.from(order).map((key, index) => {
               const match = styles[key];
               const rule = match.rule as MatchedStyleRule;
 
-              const parentMedia = getMedia(rule);
-              const parentLayer = getLayer(rule);
+              const computedValue =
+                result.computedStyle[key] || result.cssVars[match.value];
 
-              const computedValue = result.computedStyle[key];
+              const prettySelector = rule.selector.replaceAll("\\.", ".");
 
               return (
                 <styled.code
@@ -100,15 +105,21 @@ export function SidebarPane() {
                   key={key}
                   gap="1px"
                 >
+                  <styled.div display="flex" alignItems="center"></styled.div>
                   <styled.div display="flex" alignItems="center">
-                    {/* <styled.span>
-                      {rule.type === "style" ? rule.selector + "{" : ""}
-                    </styled.span> */}
-                  </styled.div>
-                  <styled.div display="flex" alignItems="center">
-                    <styled.span color="rgb(92, 213, 251)">{key}</styled.span>
+                    {/* TODO editable */}
+                    <Editable.Root
+                      activationMode="focus"
+                      placeholder={key}
+                      className={css({ color: "rgb(92, 213, 251)" })}
+                      autoResize
+                    >
+                      <Editable.Area>
+                        <Editable.Input />
+                        <Editable.Preview />
+                      </Editable.Area>
+                    </Editable.Root>
                     <styled.span mr="6px">:</styled.span>
-                    {/* {} */}
                     {isColor(computedValue) && (
                       <styled.div
                         display="inline-block"
@@ -120,104 +131,158 @@ export function SidebarPane() {
                       />
                     )}
                     <styled.span>{match.value}</styled.span>
+                    {match.value.startsWith("var(--") && computedValue && (
+                      <Tooltip.Root
+                        openDelay={0}
+                        closeDelay={0}
+                        positioning={{ placement: "bottom" }}
+                        lazyMount
+                        // Restore textDecoration on close
+                        onOpenChange={(details) => {
+                          if (!details.open) {
+                            const tooltipTrigger = document.querySelector(
+                              `[data-tooltipid="trigger${key + index}" ]`
+                            ) as HTMLElement;
+                            if (!tooltipTrigger) return;
+                            tooltipTrigger.style.textDecoration = "";
+                            return;
+                          }
+                        }}
+                      >
+                        <Tooltip.Trigger asChild>
+                          <styled.span
+                            data-tooltipid={`trigger${key}` + index}
+                            ml="11px"
+                            fontSize="10px"
+                            opacity="0.7"
+                            textOverflow="ellipsis"
+                            overflow="hidden"
+                            whiteSpace="nowrap"
+                            maxWidth="130px"
+                          >
+                            {computedValue}
+                          </styled.span>
+                        </Tooltip.Trigger>
+                        <Portal>
+                          <Tooltip.Positioner>
+                            <Tooltip.Content
+                              data-tooltipid={`content${key}` + index}
+                              maxW="var(--available-width)"
+                              animation="unset"
+                            >
+                              <span
+                                // Only show tooltip if text is overflowing
+                                ref={(node) => {
+                                  const tooltipTrigger = document.querySelector(
+                                    `[data-tooltipid="trigger${key + index}" ]`
+                                  ) as HTMLElement;
+                                  if (!tooltipTrigger) return;
+
+                                  // const tooltipContent = document.querySelector(
+                                  //   `[data-tooltipid="content${key + index}" ]`
+                                  // ) as HTMLElement;
+                                  const tooltipContent =
+                                    node?.parentElement as HTMLElement;
+                                  if (!tooltipContent) return;
+
+                                  // if (!details.open) {
+                                  //   tooltipTrigger.style.textDecoration = "";
+                                  //   return;
+                                  // }
+
+                                  if (
+                                    tooltipTrigger.offsetWidth <
+                                    tooltipTrigger.scrollWidth
+                                  ) {
+                                    // Text is overflowing, add tooltip
+                                    tooltipContent.style.display = "";
+                                    tooltipTrigger.style.textDecoration =
+                                      "underline";
+                                  }
+                                }}
+                              >
+                                {computedValue}
+                              </span>
+                            </Tooltip.Content>
+                          </Tooltip.Positioner>
+                        </Portal>
+                      </Tooltip.Root>
+                    )}
                     <styled.div ml="auto" display="flex" gap="2">
-                      {(parentMedia || parentLayer) && (
+                      {(rule.media || rule.layer) && (
                         <styled.span display="none" opacity="0.4" ml="6px">
-                          {parentMedia ? parentMedia.media : ""}{" "}
-                          {parentLayer
-                            ? `@layer ${getComputedLayer(parentLayer)
-                                .reverse()
-                                .map((r) => r.layer)
-                                .join(".")}`
-                            : ""}
+                          {rule.media}
+                          {rule.layer ? `@layer ${rule.layer}` : ""}
                         </styled.span>
                       )}
-                      <styled.span
-                        // textDecoration="underline"
-                        maxWidth="200px"
-                        textOverflow="ellipsis"
-                        overflow="hidden"
-                        whiteSpace="nowrap"
-                        opacity="0.7"
+                      <Tooltip.Root
+                        openDelay={0}
+                        closeDelay={0}
+                        positioning={{ placement: "left" }}
+                        lazyMount
                       >
-                        {rule.selector}
-                      </styled.span>
+                        <Tooltip.Trigger asChild>
+                          <styled.span
+                            maxWidth={{
+                              base: "150px",
+                              sm: "200px",
+                              md: "300px",
+                            }}
+                            textOverflow="ellipsis"
+                            overflow="hidden"
+                            whiteSpace="nowrap"
+                            opacity="0.7"
+                            // cursor="pointer"
+                            textDecoration={{
+                              _hover: "underline",
+                            }}
+                            onClick={async () => {
+                              await evaluator.copy(prettySelector);
+                            }}
+                          >
+                            {prettySelector}
+                          </styled.span>
+                        </Tooltip.Trigger>
+                        <Portal>
+                          <Tooltip.Positioner>
+                            <Tooltip.Content
+                              maxW="var(--available-width)"
+                              animation="unset"
+                              display="flex"
+                              flexDirection="column"
+                            >
+                              {rule.layer && (
+                                <span>
+                                  @layer {rule.layer} {"{\n\n"}{" "}
+                                </span>
+                              )}
+                              {rule.media && (
+                                <styled.span ml="2">
+                                  @media {rule.media} {"{\n\n"}{" "}
+                                </styled.span>
+                              )}
+                              <styled.span ml={rule.media ? "4" : "2"}>
+                                {prettySelector}
+                              </styled.span>
+                              {rule.media && (
+                                <styled.span ml="2">{"}"}</styled.span>
+                              )}
+                              {rule.layer && <span>{"}"}</span>}
+                            </Tooltip.Content>
+                          </Tooltip.Positioner>
+                        </Portal>
+                      </Tooltip.Root>
                     </styled.div>
                   </styled.div>
-                  {/* <styled.span>{rule.type === "style" ? "}" : ""}</styled.span> */}
                 </styled.code>
               );
             })}
           </Flex>
-          {/* <code>{JSON.stringify(computeStyle(sorted), null, 2)}</code> */}
-          {/* {sorted.map((rule, index) => (
-            <RenderRule key={rule.type + index} rule={rule} />
-          ))} */}
-
-          {/* <pre>{JSON.stringify(result?.rules, null, 2)}</pre> */}
         </Stack>
       )}
     </>
   );
 }
-
-const getAncestor = <TRule extends MatchedRule>(
-  from: MatchedRule,
-  predicate: (rule: MatchedRule) => rule is TRule
-) => {
-  let current = from.parentRule;
-  while (current) {
-    if (predicate(current)) return current;
-    current = current.parentRule;
-  }
-
-  return;
-};
-const isLayer = (rule: MatchedRule): rule is MatchedLayerBlockRule =>
-  rule.type === "layer";
-const isMedia = (rule: MatchedRule): rule is MatchedMediaRule =>
-  rule.type === "media";
-
-const getLayer = (rule: MatchedRule) => getAncestor(rule, isLayer);
-const getMedia = (rule: MatchedRule) => getAncestor(rule, isMedia);
-
-const getComputedLayer = (rule: MatchedLayerBlockRule) => {
-  const stack = [rule];
-  let current = rule;
-  while (current) {
-    if (current.parentRule) {
-      current = current.parentRule;
-      stack.push(current);
-    } else break;
-  }
-
-  return stack;
-};
-
-// const getLayer = (rule: MatchedRule) => {
-//   if (rule.type === "style") {
-//     return rule.parentRule?.layer;
-//   }
-//   return rule.layer;
-// };
-
-const computeStyles = (rules: MatchedRule[]) => {
-  const styles: Record<string, { rule: MatchedRule; value: string }> = {};
-  const insertOrder = [] as string[];
-  rules.forEach((rule) => {
-    if (rule.type === "style") {
-      Object.keys(rule.style).forEach((key) => {
-        insertOrder.push(key);
-        styles[key] = {
-          rule: rule,
-          value: rule.style[key],
-        };
-      });
-    }
-  });
-  const order = new Set(Array.from(insertOrder).reverse());
-  return { styles, order };
-};
 
 const useWindowSize = () => {
   const [windowSize, setWindowSize] = useState({} as MatchResult["env"]);
@@ -231,314 +296,23 @@ const useWindowSize = () => {
   return windowSize;
 };
 
-const isRuleApplied = (
-  styleRule: MatchedRule,
-  env: MatchResult["env"]
-): boolean => {
-  if (!styleRule.parentRule) return true;
-  if (styleRule.type === "media") {
-    const isMatching = matches(compileQuery(styleRule.media), env);
-    return isMatching;
-  }
+const [Toaster, toast] = createToaster({
+  placement: "top-end",
+  duration: 600,
+  max: 1,
+  pauseOnPageIdle: false,
 
-  if (styleRule.parentRule.type === "layer") return true;
-
-  return isRuleApplied(styleRule.parentRule, env);
-};
-
-const sortRules = (rules: MatchedRule[], env: MatchResult["env"]) => {
-  return Array.from(rules).filter((rule) => {
-    if (!isRuleApplied(rule, env)) {
-      return false;
-    }
-
-    return true;
-  });
-};
-
-function compactCSS(styles: Record<string, string>) {
-  Object.keys(shorthandProperties).forEach((shorthand) => {
-    const allEqual = longhands.every(
-      (longhand) => styles[longhand] === styles[shorthand]
-    );
-
-    if (allEqual) {
-      // All longhand values are equal to the shorthand, so remove longhands
-      longhands.forEach((longhand) => delete styles[longhand]);
-    } else {
-      // At least one longhand differs, so remove the shorthand
-      delete styles[shorthand];
-    }
-  });
-
-  return styles;
-}
-
-const RenderRule = ({ rule }: { rule: MatchedRule }) => {
-  if (rule.type === "style") {
+  render(toast) {
     return (
-      <Stack>
-        <Box fontWeight="bold">{rule.selector}</Box>
-        <pre>{JSON.stringify(compactCSS(rule.style), null, 2)}</pre>
-      </Stack>
+      <Toast.Root onClick={toast.dismiss} p="10px">
+        <Toast.Title fontSize="12px">{toast.title}</Toast.Title>
+        <Toast.Description>{toast.description}</Toast.Description>
+        <Toast.CloseTrigger asChild>
+          <IconButton size="sm" variant="link">
+            <XIcon />
+          </IconButton>
+        </Toast.CloseTrigger>
+      </Toast.Root>
     );
-  }
-
-  if (rule.type === "media") {
-    return (
-      <Stack>
-        <Box fontWeight="bold">{rule.media}</Box>
-        {/* <pre>{JSON.stringify(rule.style, null, 2)}</pre> */}
-      </Stack>
-    );
-  }
-
-  if (rule.type === "layer") {
-    return (
-      <Stack>
-        <Box fontWeight="bold">{rule.layer}</Box>
-        {/* <pre>{JSON.stringify(rule.style, null, 2)}</pre> */}
-      </Stack>
-    );
-  }
-
-  return null;
-};
-
-const Demo = (props: Accordion.RootProps) => {
-  const items = ["React", "Solid", "Svelte", "Vue"];
-  return (
-    <Accordion.Root defaultValue={["React"]} multiple {...props}>
-      {items.map((item, id) => (
-        <Accordion.Item key={id} value={item} disabled={item === "Svelte"}>
-          <Accordion.ItemTrigger>
-            {item}
-            <Accordion.ItemIndicator>
-              <ChevronDownIcon />
-            </Accordion.ItemIndicator>
-          </Accordion.ItemTrigger>
-          <Accordion.ItemContent>
-            Pudding donut gummies chupa chups oat cake marzipan biscuit tart.
-            Dessert macaroon ice cream bonbon jelly. Jelly topping tiramisu
-            halvah lollipop.
-          </Accordion.ItemContent>
-        </Accordion.Item>
-      ))}
-    </Accordion.Root>
-  );
-};
-
-const shorthandProperties = {
-  animation: [
-    "animationName",
-    "animationDuration",
-    "animationTimingFunction",
-    "animationDelay",
-    "animationIterationCount",
-    "animationDirection",
-    "animationFillMode",
-    "animationPlayState",
-  ],
-  background: [
-    "backgroundImage",
-    "backgroundPosition",
-    "backgroundSize",
-    "backgroundRepeat",
-    "backgroundAttachment",
-    "backgroundOrigin",
-    "backgroundClip",
-    "backgroundColor",
-  ],
-  backgroundPosition: ["backgroundPositionX", "backgroundPositionY"],
-  border: ["borderWidth", "borderStyle", "borderColor"],
-  borderBlockEnd: [
-    "borderBlockEndWidth",
-    "borderBlockEndStyle",
-    "borderBlockEndColor",
-  ],
-  borderBlockStart: [
-    "borderBlockStartWidth",
-    "borderBlockStartStyle",
-    "borderBlockStartColor",
-  ],
-  borderBottom: ["borderBottomWidth", "borderBottomStyle", "borderBottomColor"],
-  borderColor: [
-    "borderTopColor",
-    "borderRightColor",
-    "borderBottomColor",
-    "borderLeftColor",
-  ],
-  borderImage: [
-    "borderImageSource",
-    "borderImageSlice",
-    "borderImageWidth",
-    "borderImageOutset",
-    "borderImageRepeat",
-  ],
-  borderInlineEnd: [
-    "borderInlineEndWidth",
-    "borderInlineEndStyle",
-    "borderInlineEndColor",
-  ],
-  borderInlineStart: [
-    "borderInlineStartWidth",
-    "borderInlineStartStyle",
-    "borderInlineStartColor",
-  ],
-  borderLeft: ["borderLeftWidth", "borderLeftStyle", "borderLeftColor"],
-  borderRadius: [
-    "borderTopLeftRadius",
-    "borderTopRightRadius",
-    "borderBottomRightRadius",
-    "borderBottomLeftRadius",
-  ],
-  borderRight: ["borderRightWidth", "borderRightStyle", "borderRightColor"],
-  borderStyle: [
-    "borderTopStyle",
-    "borderRightStyle",
-    "borderBottomStyle",
-    "borderLeftStyle",
-  ],
-  borderTop: ["borderTopWidth", "borderTopStyle", "borderTopColor"],
-  borderWidth: [
-    "borderTopWidth",
-    "borderRightWidth",
-    "borderBottomWidth",
-    "borderLeftWidth",
-  ],
-  columnRule: ["columnRuleWidth", "columnRuleStyle", "columnRuleColor"],
-  columns: ["columnWidth", "columnCount"],
-  container: ["contain", "content"],
-  containIntrinsicSize: [
-    "containIntrinsicSizeInline",
-    "containIntrinsicSizeBlock",
-  ],
-  cue: ["cueBefore", "cueAfter"],
-  flex: ["flexGrow", "flexShrink", "flexBasis"],
-  flexFlow: ["flexDirection", "flexWrap"],
-  font: [
-    "fontStyle",
-    "fontVariantCaps",
-    "fontVariantEastAsian",
-    "fontVariantLigatures",
-    "fontVariantNumeric",
-    "fontVariantPosition",
-    "fontWeight",
-    "fontStretch",
-    "fontSize",
-    "lineHeight",
-    "fontFamily",
-  ],
-  fontSynthesis: [
-    "fontSynthesisWeight",
-    "fontSynthesisStyle",
-    "fontSynthesisSmallCaps",
-  ],
-  fontVariant: [
-    "fontVariantCaps",
-    "fontVariantEastAsian",
-    "fontVariantLigatures",
-    "fontVariantNumeric",
-    "fontVariantPosition",
-  ],
-  gap: ["columnGap", "rowGap"],
-  grid: [
-    "gridTemplateColumns",
-    "gridTemplateRows",
-    "gridTemplateAreas",
-    "gridAutoColumns",
-    "gridAutoRows",
-    "gridAutoFlow",
-  ],
-  gridArea: ["gridRowStart", "gridColumnStart", "gridRowEnd", "gridColumnEnd"],
-  gridColumn: ["gridColumnStart", "gridColumnEnd"],
-  gridGap: ["gridColumnGap", "gridRowGap"],
-  gridRow: ["gridRowStart", "gridRowEnd"],
-  gridTemplate: [
-    "gridTemplateColumns",
-    "gridTemplateRows",
-    "gridTemplateAreas",
-  ],
-  inset: ["top", "right", "bottom", "left"],
-  listStyle: ["listStyleType", "listStylePosition", "listStyleImage"],
-  margin: ["marginTop", "marginRight", "marginBottom", "marginLeft"],
-  mask: [
-    "maskImage",
-    "maskMode",
-    "maskRepeat",
-    "maskPosition",
-    "maskClip",
-    "maskOrigin",
-    "maskSize",
-    "maskComposite",
-  ],
-  maskBorder: [
-    "maskBorderSource",
-    "maskBorderMode",
-    "maskBorderSlice",
-    "maskBorderWidth",
-    "maskBorderOutset",
-    "maskBorderRepeat",
-  ],
-  offset: [
-    "offsetPosition",
-    "offsetPath",
-    "offsetDistance",
-    "offsetRotate",
-    "offsetAnchor",
-  ],
-  outline: ["outlineWidth", "outlineStyle", "outlineColor"],
-  overflow: ["overflowX", "overflowY"],
-  padding: ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"],
-  pause: ["pauseBefore", "pauseAfter"],
-  placeContent: ["alignContent", "justifyContent"],
-  placeItems: ["alignItems", "justifyItems"],
-  placeSelf: ["alignSelf", "justifySelf"],
-  rest: ["restBefore", "restAfter"],
-  scrollMargin: [
-    "scrollMarginTop",
-    "scrollMarginRight",
-    "scrollMarginBottom",
-    "scrollMarginLeft",
-  ],
-  scrollPadding: [
-    "scrollPaddingTop",
-    "scrollPaddingRight",
-    "scrollPaddingBottom",
-    "scrollPaddingLeft",
-  ],
-  scrollPaddingBlock: ["scrollPaddingBlockStart", "scrollPaddingBlockEnd"],
-  scrollPaddingInline: ["scrollPaddingInlineStart", "scrollPaddingInlineEnd"],
-  scrollSnapMargin: [
-    "scrollSnapMarginTop",
-    "scrollSnapMarginRight",
-    "scrollSnapMarginBottom",
-    "scrollSnapMarginLeft",
-  ],
-  scrollSnapMarginBlock: [
-    "scrollSnapMarginBlockStart",
-    "scrollSnapMarginBlockEnd",
-  ],
-  scrollSnapMarginInline: [
-    "scrollSnapMarginInlineStart",
-    "scrollSnapMarginInlineEnd",
-  ],
-  scrollTimeline: ["scrollTimelineSource", "scrollTimelineOrientation"],
-  textDecoration: [
-    "textDecorationLine",
-    "textDecorationStyle",
-    "textDecorationColor",
-  ],
-  textEmphasis: ["textEmphasisStyle", "textEmphasisColor"],
-  transition: [
-    "transitionProperty",
-    "transitionDuration",
-    "transitionTimingFunction",
-    "transitionDelay",
-  ],
-};
-
-const longhands = Object.values(shorthandProperties).reduce(
-  (a, b) => [...a, ...b],
-  []
-);
+  },
+});

@@ -1,22 +1,12 @@
 @layer reset, base, tokens, recipes, utilities;
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
-  /*  */
   background-color: #282828;
   color: white;
-  font-family: monospace;
-}
-
-.color-swatch {
-  display: flex;
-  margin-right: 2px;
-  width: 10px;
-  height: 10px;
-  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAAGUlEQVQYV2M4gwH+YwCGIasIUwhT25BVBADtzYNYrHvv4gAAAABJRU5ErkJggg==");
-  line-height: 10px;
-}
-
-.color-swatch-inner {
-  flex: auto;
-  border: 1px solid rgb(128 128 128 / 60%);
 }

@@ -1,3 +1,5 @@
+import { getMedia, getLayer, getComputedLayer } from "./rules";
+
 const devtools = browser.devtools;
 const inspectedWindow = devtools.inspectedWindow;
 
@@ -8,7 +10,11 @@ type WithoutFirst<T extends AnyFunction> =
 const evalEl = <T extends AnyFunction>(fn: T, ...args: WithoutFirst<T>) => {
   return new Promise<ReturnType<T>>(async (resolve, reject) => {
     const [result, error] = await inspectedWindow.eval(
-      "(" + fn.toString() + ")(" + ["$0"].concat(args as any).join() + ")"
+      "(" +
+        fn.toString() +
+        ")(" +
+        ["$0 || (document.documentElement)"].concat(args as any).join() +
+        ")"
     );
     if (error) {
       // console.error("{evalEl} error");
@@ -21,9 +27,13 @@ const evalEl = <T extends AnyFunction>(fn: T, ...args: WithoutFirst<T>) => {
 
 const evalFn = <T extends AnyFunction>(fn: T, ...args: Parameters<T>) => {
   return new Promise<ReturnType<T>>(async (resolve, reject) => {
-    const [result, error] = await inspectedWindow.eval(
-      "(" + fn.toString() + ")(" + args.join() + ")"
-    );
+    const stringified =
+      "(" +
+      fn.toString() +
+      ")(" +
+      args.map((arg) => JSON.stringify(arg)).join() +
+      ")";
+    const [result, error] = await inspectedWindow.eval(stringified);
     if (error) {
       // console.error("{eval} error");
       return reject(error.value);
@@ -33,18 +43,59 @@ const evalFn = <T extends AnyFunction>(fn: T, ...args: Parameters<T>) => {
   });
 };
 
+const inspect = async () => {
+  const result = await evalEl(inspectElement);
+
+  const layers = new Map<string, MatchedStyleRule[]>();
+  result.rules.forEach((_rule) => {
+    const rule = _rule as MatchedStyleRule;
+    const parentMedia = getMedia(rule);
+    const parentLayer = getLayer(rule);
+
+    if (parentLayer) {
+      rule.layer = getComputedLayer(parentLayer)
+        .reverse()
+        .map((r) => r.layer)
+        .join(".");
+
+      if (!layers.has(rule.layer)) {
+        layers.set(rule.layer, []);
+      }
+      layers.get(rule.layer)!.push(rule);
+    }
+
+    if (parentMedia) {
+      rule.media = parentMedia.media;
+    }
+  });
+
+  return {
+    ...result,
+    layers,
+  };
+};
+
 export const evaluator = {
   fn: evalFn,
   el: evalEl,
-  inspectElement: () => evalEl(inspectElement),
-  onSelectionChanged: (cb: (element: InspectedElement) => void) => {
+  copy: (valueToCopy: string) => {
+    return evalFn(
+      // @ts-expect-error https://developer.chrome.com/docs/devtools/console/utilities/#copy-function
+      (value: string) => window.copy(value),
+      valueToCopy
+    );
+  },
+  inspectElement: inspect,
+  onSelectionChanged: (cb: (element: MatchResult) => void) => {
     const handleSelectionChanged = async () => {
-      const element = await evalEl(inspectElement);
+      const element = await inspect();
       cb(element);
     };
     devtools.panels.elements.onSelectionChanged.addListener(
       handleSelectionChanged
     );
+
+    handleSelectionChanged();
 
     return () => {
       devtools.panels.elements.onSelectionChanged.removeListener(
@@ -73,6 +124,14 @@ export interface MatchedStyleRule {
   selector: string;
   parentRule: MatchedMediaRule | MatchedLayerBlockRule | null;
   style: Record<string, string>;
+  /**
+   * Computed layer name from traversing `parentRule`
+   */
+  layer?: string;
+  /**
+   * Computed media query from traversing `parentRule`
+   */
+  media?: string;
 }
 export interface MatchedMediaRule {
   type: "media";
@@ -91,8 +150,17 @@ export type MatchedRule =
   | MatchedMediaRule
   | MatchedLayerBlockRule;
 
-export function inspectElement(element: HTMLElement) {
-  function getMatchedCSSRules(element: Element): MatchedRule[] {
+/**
+ * Inspects an element and returns all matching CSS rules
+ * This needs to contain every functions as it will be stringified/evaluated in the browser
+ */
+function inspectElement(element: HTMLElement) {
+  const layerOrders = [] as Array<string[]>;
+
+  /**
+   * Traverses the document stylesheets and returns all matching CSS rules
+   */
+  function getMatchingCssRules(element: Element): MatchedRule[] {
     const matchedRules: Array<
       CSSStyleRule | CSSMediaRule | CSSLayerBlockRule
     >[] = [];
@@ -104,6 +172,11 @@ export function inspectElement(element: HTMLElement) {
           const matchingRules = findMatchingRules(rules, element);
           if (matchingRules.length > 0) {
             matchedRules.push(matchingRules);
+            rules.forEach((rule) => {
+              if (rule instanceof CSSLayerStatementRule) {
+                layerOrders.push(Array.from(rule.nameList));
+              }
+            });
           }
         }
       } catch (e) {
@@ -119,6 +192,10 @@ export function inspectElement(element: HTMLElement) {
       .filter(Boolean) as MatchedRule[];
   }
 
+  /**
+   * Filter `CSSStyleDeclaration` with CSS vars and only applied (from any CSS rule) properties, add !important when needed
+   * Basically, this removes properties that only have default inherited values from an unrelevant source from the dev PoV
+   */
   const getCssStyleRuleDeclarations = (rule: CSSStyleRule) => {
     const styles = {} as Record<string, string>;
     for (const property in rule.style) {
@@ -144,6 +221,11 @@ export function inspectElement(element: HTMLElement) {
 
   // https://developer.mozilla.org/en-US/docs/Web/API/CSSRule/type
   const cache = new WeakMap<CSSRule, MatchedRule>();
+
+  /**
+   * Serializes a CSSRule into a MatchedRule
+   * This is needed because we're sending this data to the devtools panel
+   */
   const serialize = (rule: CSSRule): MatchedRule | null => {
     const cached = cache.get(rule);
     if (cached) {
@@ -195,7 +277,6 @@ export function inspectElement(element: HTMLElement) {
     return null;
   };
 
-  // Function to determine the source of the CSS rule
   function getRuleSource(rule: CSSRule): string {
     if (rule.parentStyleSheet?.href) {
       return rule.parentStyleSheet.href;
@@ -206,6 +287,9 @@ export function inspectElement(element: HTMLElement) {
     }
   }
 
+  /**
+   * Recursively finds all matching CSS rules, traversing @media queries and @layer blocks
+   */
   function findMatchingRules(rules: CSSRule[], element: Element) {
     let matchingRules: Array<CSSStyleRule | CSSMediaRule | CSSLayerBlockRule> =
       [];
@@ -227,15 +311,69 @@ export function inspectElement(element: HTMLElement) {
   }
 
   const computed = getComputedStyle(element);
-  const rules = getMatchedCSSRules(element);
+  const rules = getMatchingCssRules(element);
+
+  const extractVariableName = (value: string) => {
+    const endIndex = value.indexOf(",") || value.length - 1;
+    return [value.slice(4, endIndex), value.slice(endIndex + 1)];
+  };
+
+  /**
+   * Returns the computed value of a CSS variable
+   */
+  function getComputedCSSVariableValue(variable: string): string {
+    const stack: string[] = [variable];
+    const seen = new Set<string>();
+    let currentValue: string = "";
+
+    while (stack.length > 0) {
+      const currentVar = stack.pop()!;
+      const [name, fallback] = extractVariableName(currentVar);
+
+      const computed = getComputedStyle(element);
+      currentValue = computed.getPropertyValue(name).trim();
+
+      if (!currentValue && fallback) {
+        if (!fallback.startsWith("var(--")) return fallback;
+        if (!seen.has(fallback)) return fallback;
+
+        seen.add(fallback);
+        stack.push(fallback);
+      }
+    }
+
+    return currentValue;
+  }
+
+  const cssVars = {} as Record<string, string>;
+  // Store every CSS variable (and their computed values) from matched rules
+  for (const rule of rules) {
+    if (rule.type === "style") {
+      for (const property in rule.style) {
+        const value = rule.style[property];
+        if (value.startsWith("var(--")) {
+          cssVars[value] = getComputedCSSVariableValue(value);
+        }
+      }
+    }
+  }
 
   const serialized = {
     rules,
+    cssVars,
+    layerOrders,
     classes: [...element.classList].filter(Boolean),
     displayName: element.nodeName.toLowerCase(),
+    /**
+     * This contains the final style object with all the CSS rules applied on the element
+     * including stuff we don't care about
+     */
     computedStyle: Object.fromEntries(
       Array.from(computed).map((key) => [key, computed.getPropertyValue(key)])
     ),
+    /**
+     * This contains the `style` attribute resulting object applied on the element
+     */
     style: (element.style.cssText
       ? Object.fromEntries(
           Array.from(element.style).map((key) => {
@@ -248,6 +386,10 @@ export function inspectElement(element: HTMLElement) {
           })
         )
       : {}) as Record<string, string>,
+    /**
+     * This is needed to match rules that are nested in media queries
+     * and filter them out if they are not applied with this environment
+     */
     env: {
       widthPx: window.innerWidth,
       heightPx: window.innerHeight,
@@ -259,7 +401,7 @@ export function inspectElement(element: HTMLElement) {
   return serialized;
 }
 
-export type MatchResult = Awaited<ReturnType<typeof inspectElement>>;
+export type MatchResult = Awaited<ReturnType<typeof inspect>>;
 
 export function compact<T extends Record<string, any>>(value: T) {
   return Object.fromEntries(
