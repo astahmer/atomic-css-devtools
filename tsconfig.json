@@ -2,6 +2,12 @@
   "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "#components/*": ["./components/*"],
+      "#lib/*": ["./lib/*"],
+      "#styled-system/*": ["./styled-system/*"]
+    }
   }
 }

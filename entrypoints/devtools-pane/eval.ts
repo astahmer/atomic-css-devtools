@@ -36,9 +36,7 @@ const evalFn = <T extends AnyFunction>(fn: T, ...args: Parameters<T>) => {
 export const evaluator = {
   fn: evalFn,
   el: evalEl,
-  // element
   inspectElement: () => evalEl(inspectElement),
-  // event
   onSelectionChanged: (cb: (element: InspectedElement) => void) => {
     const handleSelectionChanged = async () => {
       const element = await evalEl(inspectElement);
@@ -54,93 +52,46 @@ export const evaluator = {
       );
     };
   },
+  onWindowResize: (cb: (env: MatchResult["env"]) => void) => {
+    const port = browser.runtime.connect({ name: "devtools" });
+    const handlePortMessage = (message: any) => {
+      if (message.action == "resize") {
+        cb(message.data);
+      }
+    };
+    port.onMessage.addListener(handlePortMessage);
+
+    return () => {
+      port.onMessage.removeListener(handlePortMessage);
+    };
+  },
 };
-window.evaluator = evaluator;
-globalThis.evaluator = evaluator;
+
+export interface MatchedStyleRule {
+  type: "style";
+  source: string;
+  selector: string;
+  parentRule: MatchedMediaRule | MatchedLayerBlockRule | null;
+  style: Record<string, string>;
+}
+export interface MatchedMediaRule {
+  type: "media";
+  source: string;
+  parentRule: MatchedLayerBlockRule | null;
+  media: string;
+}
+export interface MatchedLayerBlockRule {
+  type: "layer";
+  source: string;
+  parentRule: MatchedLayerBlockRule | null;
+  layer: string;
+}
+export type MatchedRule =
+  | MatchedStyleRule
+  | MatchedMediaRule
+  | MatchedLayerBlockRule;
 
 export function inspectElement(element: HTMLElement) {
-  function getAppliedCSS(element: Element): CSSRuleSet {
-    let cssRules: CSSRuleSet = {};
-
-    // Function to check if a CSS rule applies to the element
-    function ruleAppliesToElement(rule: CSSStyleRule, el: Element): boolean {
-      try {
-        return el.matches(rule.selectorText);
-      } catch (e) {
-        return false;
-      }
-    }
-
-    // Iterating through all stylesheets
-    for (let sheet of Array.from(document.styleSheets)) {
-      try {
-        const cssRulesList = sheet.cssRules ? Array.from(sheet.cssRules) : [];
-        // Accessing the rules in each stylesheet
-        for (let rule of cssRulesList) {
-          // console.log(rule);
-          // Check if the rule is a style rule and applies to the element
-          if (
-            rule instanceof CSSStyleRule &&
-            ruleAppliesToElement(rule, element)
-          ) {
-            for (let i = 0; i < rule.style.length; i++) {
-              const cssProperty = rule.style[i];
-              cssRules[cssProperty] = rule.style.getPropertyValue(cssProperty);
-            }
-          }
-        }
-      } catch (e) {
-        // Ignoring cross-origin stylesheets
-        console.warn("Skipped a cross-origin stylesheet");
-      }
-    }
-
-    return cssRules;
-  }
-
-  function getInheritedCSS(element: Element): InheritedStyles {
-    // const computed = window.getComputedStyle(element)
-    const styleMap = element.computedStyleMap();
-    const props = Array.from(styleMap.keys());
-
-    let inheritedStyles: InheritedStyles = {};
-
-    // Fetch inheritable properties
-    // element.forEach((prop) => {
-    //   inheritedStyles[prop] = computed.getPropertyValue(prop);
-    // });
-
-    // Get all CSS variables from :root
-    // const rootStyles = getComputedStyle(document.documentElement);
-    // for (const name of rootStyles) {
-    //   if (name.startsWith("--")) {
-    //     inheritedStyles[name] = rootStyles.getPropertyValue(name).trim();
-    //   }
-    // }
-
-    // Traverse up the DOM tree and override with any explicitly set properties
-    let parent = element.parentNode;
-    while (parent && parent.nodeType === 1) {
-      const parentComputed = window.getComputedStyle(parent as Element);
-      // Node type 1 is an element
-      props.forEach((prop) => {
-        if (prop.startsWith("--")) {
-          return;
-          // inheritedStyles[prop] = parentComputed.getPropertyValue(prop);
-        }
-
-        // Check if the parent's style for this property differs
-        const parentStyle = parentComputed.getPropertyValue(prop);
-        if (parentStyle !== inheritedStyles[prop]) {
-          inheritedStyles[prop] = parentStyle;
-        }
-      });
-      parent = parent.parentNode;
-    }
-
-    return inheritedStyles;
-  }
-
   function getMatchedCSSRules(element: Element): MatchedRule[] {
     const matchedRules: Array<
       CSSStyleRule | CSSMediaRule | CSSLayerBlockRule
@@ -162,33 +113,11 @@ export function inspectElement(element: HTMLElement) {
 
     return matchedRules
       .flat()
-      .map((v) => serialize(v))
+      .map((v) => {
+        return serialize(v);
+      })
       .filter(Boolean) as MatchedRule[];
   }
-
-  interface MatchedStyleRule {
-    type: "style";
-    source: string;
-    selector: string;
-    parentRule: MatchedMediaRule | MatchedLayerBlockRule | null;
-    style: Record<string, string>;
-  }
-  interface MatchedMediaRule {
-    type: "media";
-    source: string;
-    parentRule: MatchedLayerBlockRule | null;
-    media: string;
-  }
-  interface MatchedLayerBlockRule {
-    type: "layer";
-    source: string;
-    parentRule: MatchedLayerBlockRule | null;
-    layer: string;
-  }
-  type MatchedRule =
-    | MatchedStyleRule
-    | MatchedMediaRule
-    | MatchedLayerBlockRule;
 
   const getCssStyleRuleDeclarations = (rule: CSSStyleRule) => {
     const styles = {} as Record<string, string>;
@@ -199,17 +128,19 @@ export function inspectElement(element: HTMLElement) {
           ? true
           : rule.style.hasOwnProperty(property) && rule.style[property])
       ) {
-        styles[property] = rule.style[property];
+        const important = rule.style.getPropertyPriority(property);
+        styles[property] =
+          rule.style[property] + (important ? " !" + important : "");
       }
     }
-    if (Object.keys(styles).length === 0) {
-      console.log(rule);
-    }
+
+    // TODO empty css vars ?
+    // if (Object.keys(styles).length === 0) {
+    //   console.log(rule);
+    // }
 
     return styles;
   };
-
-  // Object.keys(temp1.style).filter((key) => isNaN(key) && temp1.style[key]).map((key) => ({ [key]: temp1.style[key]  })
 
   // https://developer.mozilla.org/en-US/docs/Web/API/CSSRule/type
   const cache = new WeakMap<CSSRule, MatchedRule>();
@@ -231,7 +162,9 @@ export function inspectElement(element: HTMLElement) {
       };
       cache.set(rule, matched);
       return matched;
-    } else if (rule instanceof CSSMediaRule) {
+    }
+
+    if (rule instanceof CSSMediaRule) {
       const matched: MatchedMediaRule = {
         type: "media",
         source: getRuleSource(rule),
@@ -239,10 +172,13 @@ export function inspectElement(element: HTMLElement) {
           ? (serialize(rule.parentRule) as any)
           : null,
         media: rule.media.mediaText,
+        // query: compileQuery(rule.media.mediaText),
       };
       cache.set(rule, matched);
       return matched;
-    } else if (rule instanceof CSSLayerBlockRule) {
+    }
+
+    if (rule instanceof CSSLayerBlockRule) {
       const matched: MatchedLayerBlockRule = {
         type: "layer",
         source: getRuleSource(rule),
@@ -253,10 +189,10 @@ export function inspectElement(element: HTMLElement) {
       };
       cache.set(rule, matched);
       return matched;
-    } else {
-      console.warn("Unknown rule type", rule, typeof rule);
-      return null;
     }
+
+    console.warn("Unknown rule type", rule, typeof rule);
+    return null;
   };
 
   // Function to determine the source of the CSS rule
@@ -266,7 +202,7 @@ export function inspectElement(element: HTMLElement) {
     } else if (rule.parentStyleSheet?.ownerNode instanceof HTMLStyleElement) {
       return "<style> tag";
     } else {
-      return "inline style";
+      return "inline style attribute";
     }
   }
 
@@ -290,31 +226,40 @@ export function inspectElement(element: HTMLElement) {
     return matchingRules;
   }
 
-  // const styles = getStylesForElement();
-  // const matchedRules = getMatchedCSSRules('.your-element-selector');
+  const computed = getComputedStyle(element);
+  const rules = getMatchedCSSRules(element);
 
   const serialized = {
-    // css: getAppliedCSS(element),
-    // css2: getInheritedCSS(element),
-    // css: window.getComputedStyle(element),
-    matchedRules: getMatchedCSSRules(element),
+    rules,
     classes: [...element.classList].filter(Boolean),
     displayName: element.nodeName.toLowerCase(),
+    computedStyle: Object.fromEntries(
+      Array.from(computed).map((key) => [key, computed.getPropertyValue(key)])
+    ),
+    style: (element.style.cssText
+      ? Object.fromEntries(
+          Array.from(element.style).map((key) => {
+            const important = element.style.getPropertyPriority(key);
+            return [
+              key,
+              element.style[key as keyof typeof element.style] +
+                (important ? " !" + important : ""),
+            ];
+          })
+        )
+      : {}) as Record<string, string>,
+    env: {
+      widthPx: window.innerWidth,
+      heightPx: window.innerHeight,
+      deviceWidthPx: window.screen.width,
+      deviceHeightPx: window.screen.height,
+      dppx: window.devicePixelRatio,
+    },
   };
   return serialized;
 }
 
-interface CSSRuleSet {
-  [property: string]: string;
-}
-
-//
-
-interface InheritedStyles {
-  [property: string]: string;
-}
-
-//
+export type MatchResult = Awaited<ReturnType<typeof inspectElement>>;
 
 export function compact<T extends Record<string, any>>(value: T) {
   return Object.fromEntries(
