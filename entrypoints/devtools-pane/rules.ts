@@ -1,9 +1,9 @@
+import type { MatchResult } from "./eval";
 import type {
-  MatchResult,
   MatchedLayerBlockRule,
   MatchedMediaRule,
   MatchedRule,
-} from "./eval";
+} from "./matched-rule";
 
 import { compileQuery, matches } from "media-query-fns";
 import {

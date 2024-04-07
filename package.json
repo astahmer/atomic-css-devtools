@@ -24,11 +24,13 @@
     "@ark-ui/react": "^2.2.3",
     "@pandacss/shared": "^0.37.2",
     "@park-ui/cli": "^0.6.0",
+    "@webext-core/messaging": "^1.4.0",
     "@webext-core/proxy-service": "^1.2.0",
     "lucide-react": "^0.365.0",
     "media-query-fns": "^2.0.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "webext-bridge": "^6.0.1"
   },
   "devDependencies": {
     "@pandacss/dev": "^0.37.1",

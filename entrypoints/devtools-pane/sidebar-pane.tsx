@@ -1,21 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { css } from "../../styled-system/css";
-import { Box, Center, Flex, Stack, styled } from "../../styled-system/jsx";
-import { MatchResult, MatchedStyleRule, evaluator } from "./eval";
-
-import { isColor } from "./is-color";
-
-import { Editable } from "@ark-ui/react";
-
-import * as Tooltip from "#components/tooltip";
-import { Portal } from "@ark-ui/react";
-
 import { IconButton } from "#components/icon-button";
 import * as Toast from "#components/toast";
+import * as Tooltip from "#components/tooltip";
+import { Editable, Portal } from "@ark-ui/react";
 import { createToaster } from "@ark-ui/react/toast";
 import { XIcon } from "lucide-react";
-import { computeStyles, sortRules } from "./rules";
+import { useEffect, useMemo, useState } from "react";
+import { css } from "../../styled-system/css";
+import { Center, Flex, Stack, styled } from "../../styled-system/jsx";
+import { MatchResult, evaluator } from "./eval";
 import { hypenateProperty } from "./hyphenate-proprety";
+import { isColor } from "./is-color";
+import { MatchedStyleRule } from "./matched-rule";
+import { computeStyles, sortRules } from "./rules";
 
 export function SidebarPane() {
   const [result, setResult] = useState(null as MatchResult | null);
@@ -50,12 +46,6 @@ export function SidebarPane() {
       <Toaster />
       {result && (
         <Stack pb="4" fontFamily="sans-serif">
-          {/* <Box textStyle="lg">
-            {"<"}
-            {result.displayName}
-            {">"} matched {result?.rules?.length} rules
-          </Box>
-          <code>{result.classes.join(" ")}</code> */}
           <Flex
             direction="column"
             textStyle="sm"
