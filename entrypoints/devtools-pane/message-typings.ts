@@ -1,6 +1,13 @@
 import type { ProtocolWithReturn } from "webext-bridge";
 import type { WindowEnv, inspectApi } from "./inspect-api";
 
+export interface UpdateStyleRuleMessage {
+  selector: string;
+  prop: string;
+  value: string;
+  kind: "cssRule" | "inlineStyle";
+}
+
 declare module "webext-bridge" {
   export interface ProtocolMap {
     inspectElement: ProtocolWithReturn<
@@ -8,7 +15,7 @@ declare module "webext-bridge" {
       ReturnType<typeof inspectApi.inspectElement>
     >;
     updateStyleRule: ProtocolWithReturn<
-      { selector: string; prop: string; value: string },
+      UpdateStyleRuleMessage,
       ReturnType<typeof inspectApi.updateStyleRule>
     >;
     resize: WindowEnv;

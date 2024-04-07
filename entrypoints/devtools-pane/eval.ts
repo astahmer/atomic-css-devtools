@@ -1,5 +1,6 @@
 import { onMessage, sendMessage } from "webext-bridge/devtools";
 import { InspectResult } from "./inspect-api";
+import { UpdateStyleRuleMessage } from "./message-typings";
 
 const devtools = browser.devtools;
 const inspectedWindow = devtools.inspectedWindow;
@@ -170,16 +171,20 @@ export const evaluator = {
       cb(message.data);
     });
   },
+  onPaneShown: (cb: () => void) => {
+    onMessage("devtools-shown", () => {
+      cb();
+    });
+  },
   onPaneHidden: (cb: () => void) => {
     onMessage("devtools-hidden", () => {
       cb();
     });
   },
-  updateStyleRule: async (selector: string, prop: string, value: string) => {
-    return sendMessage(
-      "updateStyleRule",
-      { selector, prop, value },
-      { context: "content-script", tabId: null as any }
-    );
+  updateStyleRule: async (payload: UpdateStyleRuleMessage) => {
+    return sendMessage("updateStyleRule", payload, {
+      context: "content-script",
+      tabId: null as any,
+    });
   },
 };

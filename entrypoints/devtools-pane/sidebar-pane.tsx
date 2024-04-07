@@ -65,259 +65,55 @@ export function SidebarPane() {
             className="group"
           >
             {/* TODO style */}
-            {Object.keys(inspected.style).map((key) => {
+            {Object.keys(inspected.style).map((key, index) => {
               const value = inspected.style[key] as string;
 
               return (
-                <styled.code display="flex" alignItems="center" key={key}>
-                  <styled.span color="rgb(92, 213, 251)">{key}</styled.span>
-                  <styled.span mr="6px">:</styled.span>
-                  {isColor(value) && (
-                    <styled.div
-                      display="inline-block"
-                      border="1px solid #757575"
-                      width="12px"
-                      height="12px"
-                      mr="4px"
-                      style={{ backgroundColor: value }}
-                    />
-                  )}
-                  <styled.span>{value}</styled.span>
-                  <styled.span ml="auto" opacity="0.7">
-                    style
-                  </styled.span>
-                </styled.code>
+                <Declaration
+                  {...{
+                    key,
+                    index,
+                    prop: key,
+                    matchValue: value,
+                    rule: {
+                      type: "style",
+                      selector: inlineStyleSelector,
+                      style: { [key]: value },
+                      parentRule: null,
+                      source: inlineStyleSelector,
+                    },
+                    inspected,
+                    override: overrides?.["style-" + key] ?? null,
+                    setOverride: (value) =>
+                      setOverrides((overrides) => ({
+                        ...overrides,
+                        ["style-" + key]: value,
+                      })),
+                  }}
+                />
               );
             })}
             <styled.hr my="1" opacity="0" />
             {/* TODO layer separation */}
             {/* TODO media separation */}
-            {Array.from(order).map((key, index) => {
-              const matchValue = styles[key];
-              const rule = ruleByProp[key] as MatchedStyleRule;
-
-              const computedValue =
-                inspected.computedStyle[key] || inspected.cssVars[matchValue];
-
-              const prettySelector = unescapeString(rule.selector);
-              const isTogglableClass =
-                prettySelector.startsWith(".") && !prettySelector.includes(" ");
-
-              return (
-                <styled.code
-                  display="flex"
-                  flexDirection="column"
-                  key={key}
-                  gap="1px"
-                  // var(--sys-color-state-hover-on-subtle)
-                  _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
-                >
-                  <styled.div display="flex" alignItems="center" mx="2">
-                    <styled.input
-                      type="checkbox"
-                      defaultChecked
-                      css={{
-                        opacity: isTogglableClass ? "1" : "0",
-                        visibility: "hidden",
-                        _groupHover: {
-                          visibility: "visible",
-                        },
-                        fontSize: "10px",
-                        width: "13px",
-                        height: "13px",
-                        mr: "4px",
-                        accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
-                        color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
-                      }}
-                      onChange={(e) => {
-                        evaluator.el((el, className) => {
-                          try {
-                            el.classList.toggle(className);
-                          } catch (err) {
-                            console.log(err);
-                          }
-                        }, prettySelector.slice(1));
-                      }}
-                    />
-                    {/* TODO editable */}
-
-                    <styled.span
-                      className={css({ color: "rgb(92, 213, 251)" })}
-                    >
-                      {key}
-                    </styled.span>
-                    <styled.span mr="6px">:</styled.span>
-                    {isColor(computedValue) && (
-                      <styled.div
-                        display="inline-block"
-                        border="1px solid #757575"
-                        width="12px"
-                        height="12px"
-                        mr="4px"
-                        style={{ backgroundColor: computedValue }}
-                      />
-                    )}
-                    <EditableValue
-                      prop={key}
-                      selector={prettySelector}
-                      matchValue={matchValue}
-                      override={overrides?.[key] ?? null}
-                      setOverride={(value) =>
-                        setOverrides((overrides) => ({
-                          ...overrides,
-                          [key]: value,
-                        }))
-                      }
-                    />
-                    {matchValue.startsWith("var(--") && computedValue && (
-                      <Tooltip.Root
-                        openDelay={0}
-                        closeDelay={0}
-                        positioning={{ placement: "bottom" }}
-                        lazyMount
-                        // Restore textDecoration on close
-                        onOpenChange={(details) => {
-                          const tooltipTrigger = document.querySelector(
-                            `[data-tooltipid="trigger${key + index}" ]`
-                          ) as HTMLElement;
-                          if (!tooltipTrigger) return;
-
-                          if (details.open) {
-                            const tooltipContent = document.querySelector(
-                              `[data-tooltipid="content${key + index}" ]`
-                            )?.parentElement as HTMLElement;
-                            if (!tooltipContent) return;
-
-                            if (!tooltipContent.dataset.overflow) return;
-
-                            tooltipTrigger.style.textDecoration = "underline";
-                            return;
-                          }
-
-                          tooltipTrigger.style.textDecoration = "";
-                          return;
-                        }}
-                      >
-                        <Tooltip.Trigger asChild>
-                          <styled.span
-                            data-tooltipid={`trigger${key}` + index}
-                            ml="11px"
-                            fontSize="10px"
-                            opacity="0.7"
-                            textOverflow="ellipsis"
-                            overflow="hidden"
-                            whiteSpace="nowrap"
-                            maxWidth="130px"
-                          >
-                            {computedValue}
-                          </styled.span>
-                        </Tooltip.Trigger>
-                        <Portal>
-                          <Tooltip.Positioner>
-                            <span
-                              // Only show tooltip if text is overflowing
-                              ref={(node) => {
-                                const tooltipTrigger = document.querySelector(
-                                  `[data-tooltipid="trigger${key + index}" ]`
-                                ) as HTMLElement;
-                                if (!tooltipTrigger) return;
-
-                                const tooltipContent = node as HTMLElement;
-                                if (!tooltipContent) return;
-
-                                if (
-                                  tooltipTrigger.offsetWidth <
-                                  tooltipTrigger.scrollWidth
-                                ) {
-                                  // Text is overflowing, add tooltip
-                                  tooltipContent.style.display = "";
-                                  tooltipContent.dataset.overflow = "true";
-                                } else {
-                                  tooltipContent.style.display = "none";
-                                }
-                              }}
-                            >
-                              <Tooltip.Content
-                                data-tooltipid={`content${key}` + index}
-                                maxW="var(--available-width)"
-                                animation="unset"
-                              >
-                                {computedValue}
-                              </Tooltip.Content>
-                            </span>
-                          </Tooltip.Positioner>
-                        </Portal>
-                      </Tooltip.Root>
-                    )}
-                    <styled.div ml="auto" display="flex" gap="2">
-                      {(rule.media || rule.layer) && (
-                        <styled.span display="none" opacity="0.4" ml="6px">
-                          {rule.media}
-                          {rule.layer ? `@layer ${rule.layer}` : ""}
-                        </styled.span>
-                      )}
-                      <Tooltip.Root
-                        openDelay={0}
-                        closeDelay={0}
-                        positioning={{ placement: "left" }}
-                        lazyMount
-                      >
-                        <Tooltip.Trigger asChild>
-                          <styled.span
-                            maxWidth={{
-                              base: "150px",
-                              sm: "200px",
-                              md: "300px",
-                            }}
-                            textOverflow="ellipsis"
-                            overflow="hidden"
-                            whiteSpace="nowrap"
-                            opacity="0.7"
-                            // cursor="pointer"
-                            textDecoration={{
-                              _hover: "underline",
-                            }}
-                            onClick={async () => {
-                              await evaluator.copy(prettySelector);
-                            }}
-                          >
-                            {prettySelector}
-                          </styled.span>
-                        </Tooltip.Trigger>
-                        <Portal>
-                          <Tooltip.Positioner>
-                            <Tooltip.Content
-                              maxW="var(--available-width)"
-                              animation="unset"
-                              display="flex"
-                              flexDirection="column"
-                            >
-                              {rule.layer && (
-                                <span>
-                                  @layer {rule.layer} {"{\n\n"}{" "}
-                                </span>
-                              )}
-                              {rule.media && (
-                                <styled.span ml="2">
-                                  @media {rule.media} {"{\n\n"}{" "}
-                                </styled.span>
-                              )}
-                              <styled.span ml={rule.media ? "4" : "2"}>
-                                {prettySelector}
-                              </styled.span>
-                              {rule.media && (
-                                <styled.span ml="2">{"}"}</styled.span>
-                              )}
-                              {rule.layer && <span>{"}"}</span>}
-                            </Tooltip.Content>
-                          </Tooltip.Positioner>
-                        </Portal>
-                      </Tooltip.Root>
-                    </styled.div>
-                  </styled.div>
-                </styled.code>
-              );
-            })}
+            {Array.from(order).map((key, index) => (
+              <Declaration
+                {...{
+                  key,
+                  index,
+                  prop: key,
+                  matchValue: styles[key],
+                  rule: ruleByProp[key],
+                  inspected,
+                  override: overrides?.[key] ?? null,
+                  setOverride: (value) =>
+                    setOverrides((overrides) => ({
+                      ...overrides,
+                      [key]: value,
+                    })),
+                }}
+              />
+            ))}
           </Flex>
         </Stack>
       )}
@@ -325,7 +121,239 @@ export function SidebarPane() {
   );
 }
 
+const inlineStyleSelector = "<style>";
+
+interface DeclarationProps {
+  prop: string;
+  index: number;
+  matchValue: string;
+  rule: MatchedStyleRule;
+  inspected: InspectResult;
+  override: string | null;
+  setOverride: (value: string | null) => void;
+}
+
+const Declaration = (props: DeclarationProps) => {
+  {
+    const { prop, index, matchValue, rule, inspected, override, setOverride } =
+      props;
+
+    const computedValue =
+      inspected.computedStyle[prop] || inspected.cssVars[matchValue];
+
+    const prettySelector = unescapeString(rule.selector);
+    const isTogglableClass =
+      prettySelector.startsWith(".") && !prettySelector.includes(" ");
+
+    return (
+      <styled.code
+        display="flex"
+        flexDirection="column"
+        gap="1px"
+        // var(--sys-color-state-hover-on-subtle)
+        _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
+      >
+        <styled.div display="flex" alignItems="center" mx="2">
+          <styled.input
+            type="checkbox"
+            defaultChecked
+            css={{
+              opacity: isTogglableClass ? "1" : "0",
+              visibility: "hidden",
+              _groupHover: {
+                visibility: "visible",
+              },
+              fontSize: "10px",
+              width: "13px",
+              height: "13px",
+              mr: "4px",
+              accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
+              color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
+            }}
+            onChange={(e) => {
+              evaluator.el((el, className) => {
+                try {
+                  el.classList.toggle(className);
+                } catch (err) {
+                  console.log(err);
+                }
+              }, prettySelector.slice(1));
+            }}
+          />
+          {/* TODO editable */}
+
+          <styled.span className={css({ color: "rgb(92, 213, 251)" })}>
+            {prop}
+          </styled.span>
+          <styled.span mr="6px">:</styled.span>
+          {isColor(computedValue) && (
+            <styled.div
+              display="inline-block"
+              border="1px solid #757575"
+              width="12px"
+              height="12px"
+              mr="4px"
+              style={{ backgroundColor: computedValue }}
+            />
+          )}
+          <EditableValue
+            prop={prop}
+            elementSelector={inspected.selector}
+            selector={prettySelector}
+            matchValue={matchValue}
+            override={override}
+            setOverride={setOverride}
+          />
+          {matchValue.startsWith("var(--") && computedValue && (
+            <Tooltip.Root
+              openDelay={0}
+              closeDelay={0}
+              positioning={{ placement: "bottom" }}
+              lazyMount
+              // Restore textDecoration on close
+              onOpenChange={(details) => {
+                const tooltipTrigger = document.querySelector(
+                  `[data-tooltipid="trigger${prop + index}" ]`
+                ) as HTMLElement;
+                if (!tooltipTrigger) return;
+
+                if (details.open) {
+                  const tooltipContent = document.querySelector(
+                    `[data-tooltipid="content${prop + index}" ]`
+                  )?.parentElement as HTMLElement;
+                  if (!tooltipContent) return;
+
+                  if (!tooltipContent.dataset.overflow) return;
+
+                  tooltipTrigger.style.textDecoration = "underline";
+                  return;
+                }
+
+                tooltipTrigger.style.textDecoration = "";
+                return;
+              }}
+            >
+              <Tooltip.Trigger asChild>
+                <styled.span
+                  data-tooltipid={`trigger${prop}` + index}
+                  ml="11px"
+                  fontSize="10px"
+                  opacity="0.7"
+                  textOverflow="ellipsis"
+                  overflow="hidden"
+                  whiteSpace="nowrap"
+                  maxWidth="130px"
+                >
+                  {computedValue}
+                </styled.span>
+              </Tooltip.Trigger>
+              <Portal>
+                <Tooltip.Positioner>
+                  <span
+                    // Only show tooltip if text is overflowing
+                    ref={(node) => {
+                      const tooltipTrigger = document.querySelector(
+                        `[data-tooltipid="trigger${prop + index}" ]`
+                      ) as HTMLElement;
+                      if (!tooltipTrigger) return;
+
+                      const tooltipContent = node as HTMLElement;
+                      if (!tooltipContent) return;
+
+                      if (
+                        tooltipTrigger.offsetWidth < tooltipTrigger.scrollWidth
+                      ) {
+                        // Text is overflowing, add tooltip
+                        tooltipContent.style.display = "";
+                        tooltipContent.dataset.overflow = "true";
+                      } else {
+                        tooltipContent.style.display = "none";
+                      }
+                    }}
+                  >
+                    <Tooltip.Content
+                      data-tooltipid={`content${prop}` + index}
+                      maxW="var(--available-width)"
+                      animation="unset"
+                    >
+                      {computedValue}
+                    </Tooltip.Content>
+                  </span>
+                </Tooltip.Positioner>
+              </Portal>
+            </Tooltip.Root>
+          )}
+          <styled.div ml="auto" display="flex" gap="2">
+            {(rule.media || rule.layer) && (
+              <styled.span display="none" opacity="0.4" ml="6px">
+                {rule.media}
+                {rule.layer ? `@layer ${rule.layer}` : ""}
+              </styled.span>
+            )}
+            <Tooltip.Root
+              openDelay={0}
+              closeDelay={0}
+              positioning={{ placement: "left" }}
+              lazyMount
+            >
+              <Tooltip.Trigger asChild>
+                <styled.span
+                  maxWidth={{
+                    base: "150px",
+                    sm: "200px",
+                    md: "300px",
+                  }}
+                  textOverflow="ellipsis"
+                  overflow="hidden"
+                  whiteSpace="nowrap"
+                  opacity="0.7"
+                  // cursor="pointer"
+                  textDecoration={{
+                    _hover: "underline",
+                  }}
+                  onClick={async () => {
+                    await evaluator.copy(prettySelector);
+                  }}
+                >
+                  {prettySelector}
+                </styled.span>
+              </Tooltip.Trigger>
+              <Portal>
+                <Tooltip.Positioner>
+                  <Tooltip.Content
+                    maxW="var(--available-width)"
+                    animation="unset"
+                    display="flex"
+                    flexDirection="column"
+                  >
+                    {rule.layer && (
+                      <span>
+                        @layer {rule.layer} {"{\n\n"}{" "}
+                      </span>
+                    )}
+                    {rule.media && (
+                      <styled.span ml="2">
+                        @media {rule.media} {"{\n\n"}{" "}
+                      </styled.span>
+                    )}
+                    <styled.span ml={rule.media ? "4" : "2"}>
+                      {prettySelector}
+                    </styled.span>
+                    {rule.media && <styled.span ml="2">{"}"}</styled.span>}
+                    {rule.layer && <span>{"}"}</span>}
+                  </Tooltip.Content>
+                </Tooltip.Positioner>
+              </Portal>
+            </Tooltip.Root>
+          </styled.div>
+        </styled.div>
+      </styled.code>
+    );
+  }
+};
+
 interface EditableValueProps {
+  elementSelector: string;
   prop: string;
   selector: string;
   matchValue: string;
@@ -334,7 +362,8 @@ interface EditableValueProps {
 }
 
 const EditableValue = (props: EditableValueProps) => {
-  const { prop, selector, matchValue, override, setOverride } = props;
+  const { elementSelector, prop, selector, matchValue, override, setOverride } =
+    props;
 
   // TODO cmd+z undo/redo
   // TODO btn to revert to default
@@ -366,6 +395,15 @@ const EditableValue = (props: EditableValueProps) => {
   }, []);
 
   const propValue = override || matchValue;
+  const updateValue = (update: string) => {
+    const kind = selector === inlineStyleSelector ? "inlineStyle" : "cssRule";
+    return evaluator.updateStyleRule({
+      selector: kind === "inlineStyle" ? elementSelector : selector,
+      prop: hypenateProperty(prop),
+      value: update,
+      kind,
+    });
+  };
 
   return (
     <Editable.Root
@@ -380,12 +418,7 @@ const EditableValue = (props: EditableValueProps) => {
       onValueCommit={async (update) => {
         if (!update.value || update.value === propValue) return;
 
-        const hasUpdated = await evaluator.updateStyleRule(
-          selector,
-          hypenateProperty(prop),
-          update.value
-        );
-
+        const hasUpdated = await updateValue(update.value);
         if (hasUpdated) {
           setOverride(update.value);
         }
@@ -430,11 +463,7 @@ const EditableValue = (props: EditableValueProps) => {
                 cursor: "pointer",
               })}
               onClick={async () => {
-                const hasUpdated = await evaluator.updateStyleRule(
-                  selector,
-                  hypenateProperty(prop),
-                  matchValue
-                );
+                const hasUpdated = await updateValue(matchValue);
                 if (hasUpdated) {
                   setOverride(null);
                 }
@@ -464,9 +493,22 @@ const EditableValue = (props: EditableValueProps) => {
 
 const useInspectedResult = () => {
   const [result, setResult] = useState(null as InspectResult | null);
+
+  // Refresh on inspected element changed
   useEffect(() => {
     return evaluator.onSelectionChanged((update) => {
       console.log(update);
+      setResult(update);
+    });
+  }, []);
+
+  // Refresh on pane shown, maybe styles were updated in the official `Styles` devtools panel
+  useEffect(() => {
+    return evaluator.onPaneShown(async () => {
+      const update = await evaluator.inspectElement();
+      console.log(update);
+      if (!update) return;
+
       setResult(update);
     });
   }, []);

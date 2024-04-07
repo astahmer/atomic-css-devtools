@@ -1,4 +1,4 @@
-import type { InspectResult } from "../inspect-api";
+import type { InspectResult, MatchedStyleRule } from "../inspect-api";
 import type {
   MatchedLayerBlockRule,
   MatchedMediaRule,
@@ -57,7 +57,7 @@ export const getComputedLayer = (rule: MatchedLayerBlockRule) => {
  * Rules needs to have been sorted and filtered (with only relevant @media queries) beforehand
  */
 export const computeStyles = (rules: MatchedRule[]) => {
-  const ruleByProp = {} as Record<string, MatchedRule>;
+  const ruleByProp = {} as Record<string, MatchedStyleRule>;
   const styles = {} as Record<string, string>;
   const insertOrder = [] as string[];
 

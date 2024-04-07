@@ -15,6 +15,7 @@ class InspectAPI {
     const cssVars = this.getCssVars(element);
 
     const serialized = {
+      selector,
       rules: matches.rules,
       layerOrders: matches.layerOrders,
       cssVars,
@@ -175,6 +176,12 @@ class InspectAPI {
     const styleRule = this.findStyleRule(selector);
     if (styleRule) {
       styleRule.style.setProperty(prop, value);
+      return true;
+    }
+  }
+  updateElementStyle(element: HTMLElement, prop: string, value: string) {
+    if (element) {
+      element.style.setProperty(prop, value);
       return true;
     }
   }

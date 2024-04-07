@@ -23,6 +23,19 @@ export default defineContentScript({
       return rule;
     });
     onMessage("updateStyleRule", async (message) => {
+      if (message.data.kind === "inlineStyle") {
+        const element = document.querySelector(message.data.selector) as
+          | HTMLElement
+          | undefined;
+        if (!element) return;
+
+        return inspectApi.updateElementStyle(
+          element,
+          message.data.prop,
+          message.data.value
+        );
+      }
+
       const rule = inspectApi.updateStyleRule(
         message.data.selector,
         message.data.prop,
