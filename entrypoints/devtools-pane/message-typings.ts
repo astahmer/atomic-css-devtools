@@ -7,9 +7,9 @@ declare module "webext-bridge" {
       { selector: string },
       ReturnType<typeof inspectApi.inspectElement>
     >;
-    findMatchingRule: ProtocolWithReturn<
+    updateStyleRule: ProtocolWithReturn<
       { selector: string; prop: string; value: string },
-      ReturnType<typeof inspectApi.findStyleRule>
+      ReturnType<typeof inspectApi.updateStyleRule>
     >;
     resize: WindowEnv;
   }

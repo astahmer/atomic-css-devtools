@@ -358,12 +358,11 @@ const EditableValue = (props: EditableValueProps) => {
         const propValue = overrides[key] || matchValue;
         if (!update.value || update.value === propValue) return;
 
-        const hasUpdated = await evaluator.findMatchingRule(
+        const hasUpdated = await evaluator.updateStyleRule(
           selector,
           hypenateProperty(prop),
           update.value
         );
-        console.log({ hasUpdated });
 
         if (hasUpdated) {
           setOverrides((overrides) => ({

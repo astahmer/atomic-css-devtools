@@ -22,8 +22,12 @@ export default defineContentScript({
       const rule = inspectApi.inspectElement(message.data.selector);
       return rule;
     });
-    onMessage("findMatchingRule", async (message) => {
-      const rule = inspectApi.findStyleRule(message.data.selector);
+    onMessage("updateStyleRule", async (message) => {
+      const rule = inspectApi.updateStyleRule(
+        message.data.selector,
+        message.data.prop,
+        message.data.value
+      );
       console.log(rule);
       return rule;
     });

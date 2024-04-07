@@ -174,9 +174,8 @@ class InspectAPI {
   updateStyleRule(selector: string, prop: string, value: string) {
     const styleRule = this.findStyleRule(selector);
     if (styleRule) {
-      console.log(styleRule);
       styleRule.style.setProperty(prop, value);
-      return styleRule;
+      return true;
     }
   }
 

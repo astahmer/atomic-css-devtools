@@ -175,9 +175,9 @@ export const evaluator = {
       cb();
     });
   },
-  findMatchingRule: async (selector: string, prop: string, value: string) => {
-    const rule = await sendMessage(
-      "findMatchingRule",
+  updateStyleRule: async (selector: string, prop: string, value: string) => {
+    return sendMessage(
+      "updateStyleRule",
       { selector, prop, value },
       { context: "content-script", tabId: null as any }
     );
