@@ -47,7 +47,7 @@ export function SidebarPane() {
     <>
       <Toaster />
       {result && (
-        <Stack p="4" fontFamily="sans-serif">
+        <Stack pb="4" fontFamily="sans-serif">
           <Box textStyle="lg">
             {"<"}
             {result.displayName}
@@ -60,6 +60,7 @@ export function SidebarPane() {
             fontFamily="monospace"
             fontSize="11px"
             lineHeight="1.2"
+            className="group"
           >
             {/* TODO style */}
             {Object.keys(result.style).map((key) => {
@@ -96,7 +97,9 @@ export function SidebarPane() {
               const computedValue =
                 result.computedStyle[key] || result.cssVars[matchValue];
 
-              const prettySelector = rule.selector.replaceAll("\\.", ".");
+              const prettySelector = unescapeString(rule.selector);
+              const isTogglableClass =
+                prettySelector.startsWith(".") && !prettySelector.includes(" ");
 
               return (
                 <styled.code
@@ -104,13 +107,40 @@ export function SidebarPane() {
                   flexDirection="column"
                   key={key}
                   gap="1px"
+                  // var(--sys-color-state-hover-on-subtle)
+                  _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
                 >
-                  <styled.div display="flex" alignItems="center"></styled.div>
-                  <styled.div display="flex" alignItems="center">
+                  <styled.div display="flex" alignItems="center" mx="2">
+                    <styled.input
+                      type="checkbox"
+                      defaultChecked
+                      css={{
+                        opacity: isTogglableClass ? "1" : "0",
+                        visibility: "hidden",
+                        _groupHover: {
+                          visibility: "visible",
+                        },
+                        fontSize: "10px",
+                        width: "13px",
+                        height: "13px",
+                        mr: "4px",
+                        accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
+                        color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
+                      }}
+                      onChange={(e) => {
+                        console.log(rule.selector);
+                        evaluator.el((el, className) => {
+                          try {
+                            el.classList.toggle(className);
+                          } catch {}
+                        }, prettySelector.slice(1));
+                      }}
+                    />
                     {/* TODO editable */}
                     <Editable.Root
                       activationMode="focus"
                       placeholder={key}
+                      // var(--webkit-css-property-color,var(--sys-color-token-property-special))
                       className={css({ color: "rgb(92, 213, 251)" })}
                       autoResize
                     >
@@ -296,6 +326,11 @@ const useWindowSize = () => {
   }, []);
 
   return windowSize;
+};
+
+const escapeRegex = /\\/g;
+const unescapeString = (str: string) => {
+  return str.replace(escapeRegex, "");
 };
 
 const [Toaster, toast] = createToaster({

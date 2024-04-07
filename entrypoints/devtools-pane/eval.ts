@@ -4,20 +4,28 @@ const devtools = browser.devtools;
 const inspectedWindow = devtools.inspectedWindow;
 
 type AnyFunction = (...args: any[]) => any;
+type AnyElementFunction = (element: HTMLElement, ...args: any[]) => any;
 type WithoutFirst<T extends AnyFunction> =
   Parameters<T> extends [any, ...infer R] ? R : never;
 
-const evalEl = <T extends AnyFunction>(fn: T, ...args: WithoutFirst<T>) => {
+const evalEl = <T extends AnyElementFunction>(
+  fn: T,
+  ...args: WithoutFirst<T>
+) => {
   return new Promise<ReturnType<T>>(async (resolve, reject) => {
-    const [result, error] = await inspectedWindow.eval(
+    const stringified =
       "(" +
-        fn.toString() +
-        ")(" +
-        ["$0 || (document.documentElement)"].concat(args as any).join() +
-        ")"
-    );
+      fn.toString() +
+      ")(" +
+      ["$0 || (document.documentElement)"]
+        .concat(args as any)
+        .map((arg, index) => (index === 0 ? arg : JSON.stringify(arg)))
+        .join() +
+      ")";
+    const [result, error] = await inspectedWindow.eval(stringified);
     if (error) {
       // console.error("{evalEl} error");
+      console.log({ stringified });
       return reject(error.value);
     }
 
@@ -36,6 +44,7 @@ const evalFn = <T extends AnyFunction>(fn: T, ...args: Parameters<T>) => {
     const [result, error] = await inspectedWindow.eval(stringified);
     if (error) {
       // console.error("{eval} error");
+      console.log({ stringified });
       return reject(error.value);
     }
 
