@@ -3,15 +3,8 @@ import * as Toast from "#components/toast";
 import * as Tooltip from "#components/tooltip";
 import { Editable, Portal } from "@ark-ui/react";
 import { createToaster } from "@ark-ui/react/toast";
-import { XIcon } from "lucide-react";
-import {
-  MutableRefObject,
-  RefObject,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Undo2, XIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { css } from "../../styled-system/css";
 import { Center, Flex, Stack, styled } from "../../styled-system/jsx";
 import { evaluator } from "./eval";
@@ -32,6 +25,9 @@ export function SidebarPane() {
     [inspected, size]
   );
   const { styles, order, ruleByProp } = computeStyles(sorted);
+  const [overrides, setOverrides] = useState(
+    null as Record<string, string | null> | null
+  );
 
   if (!inspected) {
     return (
@@ -42,6 +38,18 @@ export function SidebarPane() {
       </Center>
     );
   }
+
+  // TODO group by layer/media
+  // TODO filter
+  // TODO only atomic (filter out rules with more than 1 declaration)
+  // TODO light mode
+  // TODO revert all to default
+  // TODO edit component styles (match all elements with the same classes as the current element, allow updating class names that are part of the class list)
+  // TODO allow toggling any declaration (not just atomic)
+  // TODO add a button to add a new declaration (inline style)
+  // TODO EditableValue for property name
+  // TODO auto-completions for property names
+  // TODO auto-completions for CSS vars
 
   return (
     <>
@@ -81,7 +89,6 @@ export function SidebarPane() {
                 </styled.code>
               );
             })}
-            {/* <styled.hr my="1" opacity="0.2" /> */}
             <styled.hr my="1" opacity="0" />
             {/* TODO layer separation */}
             {/* TODO media separation */}
@@ -154,6 +161,13 @@ export function SidebarPane() {
                       prop={key}
                       selector={prettySelector}
                       matchValue={matchValue}
+                      override={overrides?.[key] ?? null}
+                      setOverride={(value) =>
+                        setOverrides((overrides) => ({
+                          ...overrides,
+                          [key]: value,
+                        }))
+                      }
                     />
                     {matchValue.startsWith("var(--") && computedValue && (
                       <Tooltip.Root
@@ -315,14 +329,19 @@ interface EditableValueProps {
   prop: string;
   selector: string;
   matchValue: string;
+  override: string | null;
+  setOverride: (value: string | null) => void;
 }
 
 const EditableValue = (props: EditableValueProps) => {
-  const { prop, selector, matchValue } = props;
-  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const { prop, selector, matchValue, override, setOverride } = props;
+
+  // TODO cmd+z undo/redo
+  // TODO btn to revert to default
   const ref = useRef(null as HTMLDivElement | null);
   const [key, setKey] = useState(0);
 
+  // Blur contentEditable when leaving `Atomic CSS` pane
   useEffect(() => {
     const resetFocus = () => {
       if (ref.current?.dataset.focus != null) {
@@ -346,16 +365,19 @@ const EditableValue = (props: EditableValueProps) => {
     };
   }, []);
 
+  const propValue = override || matchValue;
+
   return (
     <Editable.Root
       key={key}
-      activationMode="focus"
-      placeholder={matchValue}
-      // var(--webkit-css-property-color,var(--sys-color-token-property-special))
       autoResize
       selectOnFocus
+      value={propValue}
+      className={css({ display: "flex", alignItems: "center" })}
+      activationMode="focus"
+      placeholder={propValue}
+      // var(--webkit-css-property-color,var(--sys-color-token-property-special))
       onValueCommit={async (update) => {
-        const propValue = overrides[key] || matchValue;
         if (!update.value || update.value === propValue) return;
 
         const hasUpdated = await evaluator.updateStyleRule(
@@ -365,16 +387,13 @@ const EditableValue = (props: EditableValueProps) => {
         );
 
         if (hasUpdated) {
-          setOverrides((overrides) => ({
-            ...overrides,
-            [key]: update.value,
-          }));
+          setOverride(update.value);
         }
       }}
     >
       <Editable.Area ref={ref}>
         <Editable.Input
-          defaultValue={matchValue}
+          defaultValue={propValue}
           className={css({
             // boxShadow: "var(--drop-shadow)",
             boxShadow:
@@ -393,6 +412,52 @@ const EditableValue = (props: EditableValueProps) => {
         />
         <Editable.Preview />
       </Editable.Area>
+      {/* TODO revert to default */}
+      {override !== null && (
+        <Tooltip.Root
+          openDelay={0}
+          closeDelay={0}
+          positioning={{ placement: "bottom" }}
+          lazyMount
+        >
+          <Tooltip.Trigger asChild>
+            <Undo2
+              className={css({
+                ml: "4px",
+                w: "10px",
+                h: "10px",
+                opacity: { base: 0.5, _hover: 1 },
+                cursor: "pointer",
+              })}
+              onClick={async () => {
+                const hasUpdated = await evaluator.updateStyleRule(
+                  selector,
+                  hypenateProperty(prop),
+                  matchValue
+                );
+                if (hasUpdated) {
+                  setOverride(null);
+                }
+              }}
+            />
+          </Tooltip.Trigger>
+          <Portal>
+            <Tooltip.Positioner>
+              <Tooltip.Content
+                maxW="var(--available-width)"
+                animation="unset"
+                display="flex"
+                fontSize="10px"
+                lineHeight="1.2"
+                gap="1"
+              >
+                <span>Revert to default</span>
+                <span>({matchValue})</span>
+              </Tooltip.Content>
+            </Tooltip.Positioner>
+          </Portal>
+        </Tooltip.Root>
+      )}
     </Editable.Root>
   );
 };
