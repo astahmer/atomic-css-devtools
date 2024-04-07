@@ -65,35 +65,37 @@ export function SidebarPane() {
             className="group"
           >
             {/* TODO style */}
-            {Object.keys(inspected.style).map((key, index) => {
-              const value = inspected.style[key] as string;
+            <styled.div mt="4">
+              {Object.keys(inspected.style).map((key, index) => {
+                const value = inspected.style[key] as string;
 
-              return (
-                <Declaration
-                  {...{
-                    key,
-                    index,
-                    prop: key,
-                    matchValue: value,
-                    rule: {
-                      type: "style",
-                      selector: inlineStyleSelector,
-                      style: { [key]: value },
-                      parentRule: null,
-                      source: inlineStyleSelector,
-                    },
-                    inspected,
-                    override: overrides?.["style-" + key] ?? null,
-                    setOverride: (value) =>
-                      setOverrides((overrides) => ({
-                        ...overrides,
-                        ["style-" + key]: value,
-                      })),
-                  }}
-                />
-              );
-            })}
-            <styled.hr my="1" opacity="0" />
+                return (
+                  <Declaration
+                    {...{
+                      key,
+                      index,
+                      prop: key,
+                      matchValue: value,
+                      rule: {
+                        type: "style",
+                        selector: inlineStyleSelector,
+                        style: { [key]: value },
+                        parentRule: null,
+                        source: inlineStyleSelector,
+                      },
+                      inspected,
+                      override: overrides?.["style-" + key] ?? null,
+                      setOverride: (value) =>
+                        setOverrides((overrides) => ({
+                          ...overrides,
+                          ["style-" + key]: value,
+                        })),
+                    }}
+                  />
+                );
+              })}
+            </styled.div>
+            <styled.hr my="1" opacity="0.2" />
             {/* TODO layer separation */}
             {/* TODO media separation */}
             {Array.from(order).map((key, index) => (
@@ -145,6 +147,8 @@ const Declaration = (props: DeclarationProps) => {
     const isTogglableClass =
       prettySelector.startsWith(".") && !prettySelector.includes(" ");
 
+    const [enabled, setEnabled] = useState(true);
+
     return (
       <styled.code
         display="flex"
@@ -152,6 +156,7 @@ const Declaration = (props: DeclarationProps) => {
         gap="1px"
         // var(--sys-color-state-hover-on-subtle)
         _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
+        textDecoration={enabled ? "none" : "line-through !important"}
       >
         <styled.div display="flex" alignItems="center" mx="2">
           <styled.input
@@ -170,14 +175,18 @@ const Declaration = (props: DeclarationProps) => {
               accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
               color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
             }}
-            onChange={(e) => {
-              evaluator.el((el, className) => {
+            onChange={async () => {
+              const isEnabled = await evaluator.el((el, className) => {
                 try {
-                  el.classList.toggle(className);
+                  return el.classList.toggle(className);
                 } catch (err) {
                   console.log(err);
                 }
               }, prettySelector.slice(1));
+
+              if (typeof isEnabled === "boolean") {
+                setEnabled(isEnabled);
+              }
             }}
           />
           {/* TODO editable */}
