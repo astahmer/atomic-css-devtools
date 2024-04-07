@@ -4,34 +4,36 @@ import * as Tooltip from "#components/tooltip";
 import { Editable, Portal } from "@ark-ui/react";
 import { createToaster } from "@ark-ui/react/toast";
 import { XIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  MutableRefObject,
+  RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { css } from "../../styled-system/css";
 import { Center, Flex, Stack, styled } from "../../styled-system/jsx";
-import { MatchResult, evaluator } from "./eval";
-import { hypenateProperty } from "./hyphenate-proprety";
-import { isColor } from "./is-color";
-import { MatchedStyleRule } from "./matched-rule";
-import { computeStyles, sortRules } from "./rules";
+import { evaluator } from "./eval";
+import { InspectResult, MatchedStyleRule } from "./inspect-api";
+import { hypenateProperty } from "./lib/hyphenate-proprety";
+import { isColor } from "./lib/is-color";
+import { computeStyles, sortRules } from "./lib/rules";
 
 export function SidebarPane() {
-  const [result, setResult] = useState(null as MatchResult | null);
+  const inspected = useInspectedResult();
   const size = useWindowSize();
 
-  useEffect(() => {
-    return evaluator.onSelectionChanged((update) => {
-      console.log(update);
-      setResult(update);
-    });
-  }, []);
-
   const sorted = useMemo(
-    () => (result ? sortRules(result.rules, { ...result.env, ...size }) : []),
-    [result, size]
+    () =>
+      inspected
+        ? sortRules(inspected.rules, { ...inspected.env, ...size })
+        : [],
+    [inspected, size]
   );
   const { styles, order, ruleByProp } = computeStyles(sorted);
-  const [overrides, setOverrides] = useState<Record<string, string>>({});
 
-  if (!result) {
+  if (!inspected) {
     return (
       <Center px="4" h="100%">
         <Stack textStyle="2xl" fontFamily="sans-serif">
@@ -44,7 +46,7 @@ export function SidebarPane() {
   return (
     <>
       <Toaster />
-      {result && (
+      {inspected && (
         <Stack pb="4" fontFamily="sans-serif">
           <Flex
             direction="column"
@@ -55,8 +57,8 @@ export function SidebarPane() {
             className="group"
           >
             {/* TODO style */}
-            {Object.keys(result.style).map((key) => {
-              const value = result.style[key] as string;
+            {Object.keys(inspected.style).map((key) => {
+              const value = inspected.style[key] as string;
 
               return (
                 <styled.code display="flex" alignItems="center" key={key}>
@@ -88,7 +90,7 @@ export function SidebarPane() {
               const rule = ruleByProp[key] as MatchedStyleRule;
 
               const computedValue =
-                result.computedStyle[key] || result.cssVars[matchValue];
+                inspected.computedStyle[key] || inspected.cssVars[matchValue];
 
               const prettySelector = unescapeString(rule.selector);
               const isTogglableClass =
@@ -148,35 +150,11 @@ export function SidebarPane() {
                         style={{ backgroundColor: computedValue }}
                       />
                     )}
-                    <Editable.Root
-                      activationMode="focus"
-                      placeholder={matchValue}
-                      // var(--webkit-css-property-color,var(--sys-color-token-property-special))
-                      autoResize
-                      onValueCommit={async (update) => {
-                        const propValue = overrides[key] || matchValue;
-                        if (!update.value || update.value === propValue) return;
-
-                        const hasUpdated = await evaluator.findMatchingRule(
-                          prettySelector,
-                          hypenateProperty(key),
-                          update.value
-                        );
-                        console.log({ hasUpdated });
-
-                        if (hasUpdated) {
-                          setOverrides((overrides) => ({
-                            ...overrides,
-                            [key]: update.value,
-                          }));
-                        }
-                      }}
-                    >
-                      <Editable.Area>
-                        <Editable.Input />
-                        <Editable.Preview />
-                      </Editable.Area>
-                    </Editable.Root>
+                    <EditableValue
+                      prop={key}
+                      selector={prettySelector}
+                      matchValue={matchValue}
+                    />
                     {matchValue.startsWith("var(--") && computedValue && (
                       <Tooltip.Root
                         openDelay={0}
@@ -333,8 +311,107 @@ export function SidebarPane() {
   );
 }
 
+interface EditableValueProps {
+  prop: string;
+  selector: string;
+  matchValue: string;
+}
+
+const EditableValue = (props: EditableValueProps) => {
+  const { prop, selector, matchValue } = props;
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const ref = useRef(null as HTMLDivElement | null);
+  const [key, setKey] = useState(0);
+
+  useEffect(() => {
+    const resetFocus = () => {
+      if (ref.current?.dataset.focus != null) {
+        setKey((key) => key + 1);
+      }
+    };
+
+    const callback: Parameters<
+      typeof browser.runtime.onMessage.addListener
+    >[0] = (request, _sender, _sendResponse) => {
+      if (request.type === "devtools-hidden") {
+        resetFocus();
+      }
+    };
+
+    browser.runtime.onMessage.addListener(callback);
+
+    return () => {
+      browser.runtime.onMessage.removeListener(callback);
+      resetFocus();
+    };
+  }, []);
+
+  return (
+    <Editable.Root
+      key={key}
+      activationMode="focus"
+      placeholder={matchValue}
+      // var(--webkit-css-property-color,var(--sys-color-token-property-special))
+      autoResize
+      selectOnFocus
+      onValueCommit={async (update) => {
+        const propValue = overrides[key] || matchValue;
+        if (!update.value || update.value === propValue) return;
+
+        const hasUpdated = await evaluator.findMatchingRule(
+          selector,
+          hypenateProperty(prop),
+          update.value
+        );
+        console.log({ hasUpdated });
+
+        if (hasUpdated) {
+          setOverrides((overrides) => ({
+            ...overrides,
+            [key]: update.value,
+          }));
+        }
+      }}
+    >
+      <Editable.Area ref={ref}>
+        <Editable.Input
+          defaultValue={matchValue}
+          className={css({
+            // boxShadow: "var(--drop-shadow)",
+            boxShadow:
+              "0 0 0 1px rgb(255 255 255/20%),0 2px 4px 2px rgb(0 0 0/20%),0 2px 6px 2px rgb(0 0 0/10%)!",
+            backgroundColor: "#282828ff!",
+            textOverflow: "clip!",
+            margin: "0 -2px -1px!",
+            padding: "0 2px 1px!",
+            opacity: "100%!",
+            _selection: {
+              // --sys-color-tonal-container
+              // #004a77ff
+              backgroundColor: "#004a77ff",
+            },
+          })}
+        />
+        <Editable.Preview />
+      </Editable.Area>
+    </Editable.Root>
+  );
+};
+
+const useInspectedResult = () => {
+  const [result, setResult] = useState(null as InspectResult | null);
+  useEffect(() => {
+    return evaluator.onSelectionChanged((update) => {
+      console.log(update);
+      setResult(update);
+    });
+  }, []);
+
+  return result;
+};
+
 const useWindowSize = () => {
-  const [windowSize, setWindowSize] = useState({} as MatchResult["env"]);
+  const [windowSize, setWindowSize] = useState({} as InspectResult["env"]);
 
   useEffect(() => {
     return evaluator.onWindowResize((ev) => {
@@ -343,6 +420,14 @@ const useWindowSize = () => {
   }, []);
 
   return windowSize;
+};
+
+const usePaneHidden = (cb: () => void) => {
+  useEffect(() => {
+    return evaluator.onPaneHidden(() => {
+      cb();
+    });
+  }, []);
 };
 
 const escapeRegex = /\\/g;

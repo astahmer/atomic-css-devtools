@@ -1,4 +1,4 @@
-import { compactCSS } from "../entrypoints/devtools-pane/rules";
+import { compactCSS } from "../entrypoints/devtools-pane/lib/rules";
 import { test, expect } from "vitest";
 
 test("removes longhands when same value as shorthands", () => {

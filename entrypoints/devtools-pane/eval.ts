@@ -1,13 +1,5 @@
-import { inspectApi } from "./inspect-api";
-import {
-  MatchedStyleRule,
-  MatchedRule,
-  MatchedMediaRule,
-  MatchedLayerBlockRule,
-} from "./matched-rule";
-import { WindowEnv } from "./protocol-typings";
-import { getMedia, getLayer, getComputedLayer } from "./rules";
-import { sendMessage, onMessage } from "webext-bridge/devtools";
+import { onMessage, sendMessage } from "webext-bridge/devtools";
+import { InspectResult } from "./inspect-api";
 
 const devtools = browser.devtools;
 const inspectedWindow = devtools.inspectedWindow;
@@ -136,41 +128,11 @@ const inspect = async () => {
     return getUniqueSelector(el);
   });
 
-  // console.log(selector);
-  const result = await sendMessage(
+  return await sendMessage(
     "inspectElement",
     { selector: selector },
     { context: "content-script", tabId: null as any }
   );
-  if (!result) return;
-
-  const layers = new Map<string, MatchedStyleRule[]>();
-  result.rules.forEach((_rule) => {
-    const rule = _rule as MatchedStyleRule;
-    const parentMedia = getMedia(rule);
-    const parentLayer = getLayer(rule);
-
-    if (parentLayer) {
-      rule.layer = getComputedLayer(parentLayer)
-        .reverse()
-        .map((r) => r.layer)
-        .join(".");
-
-      if (!layers.has(rule.layer)) {
-        layers.set(rule.layer, []);
-      }
-      layers.get(rule.layer)!.push(rule);
-    }
-
-    if (parentMedia) {
-      rule.media = parentMedia.media;
-    }
-  });
-
-  return {
-    ...result,
-    layers,
-  };
 };
 
 export const evaluator = {
@@ -184,10 +146,12 @@ export const evaluator = {
     );
   },
   inspectElement: inspect,
-  onSelectionChanged: (cb: (element: MatchResult) => void) => {
+  onSelectionChanged: (cb: (element: InspectResult) => void) => {
     const handleSelectionChanged = async () => {
-      const element = await inspect();
-      cb(element);
+      const result = await inspect();
+      if (!result) return;
+
+      cb(result);
     };
     devtools.panels.elements.onSelectionChanged.addListener(
       handleSelectionChanged
@@ -201,21 +165,21 @@ export const evaluator = {
       );
     };
   },
-  onWindowResize: (cb: (env: MatchResult["env"]) => void) => {
+  onWindowResize: (cb: (env: InspectResult["env"]) => void) => {
     onMessage("resize", (message) => {
       cb(message.data);
     });
   },
+  onPaneHidden: (cb: () => void) => {
+    onMessage("devtools-hidden", () => {
+      cb();
+    });
+  },
   findMatchingRule: async (selector: string, prop: string, value: string) => {
-    console.log("from devtools");
     const rule = await sendMessage(
       "findMatchingRule",
       { selector, prop, value },
-      { context: "content-script" }
+      { context: "content-script", tabId: null as any }
     );
-    // styleRule.style.setProperty(prop, value);
-    console.log(111, rule);
   },
 };
-
-export type MatchResult = Awaited<ReturnType<typeof inspect>>;

@@ -1,6 +1,5 @@
 import { onMessage, sendMessage } from "webext-bridge/content-script";
-import { inspectApi } from "./devtools-pane/inspect-api";
-import { WindowEnv } from "./devtools-pane/protocol-typings";
+import { WindowEnv, inspectApi } from "./devtools-pane/inspect-api";
 
 export default defineContentScript({
   matches: ["<all_urls>"],
@@ -21,7 +20,6 @@ export default defineContentScript({
 
     onMessage("inspectElement", async (message) => {
       const rule = inspectApi.inspectElement(message.data.selector);
-      console.log(rule);
       return rule;
     });
     onMessage("findMatchingRule", async (message) => {

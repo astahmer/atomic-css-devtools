@@ -1,13 +1,5 @@
 import type { ProtocolWithReturn } from "webext-bridge";
-import type { inspectApi } from "./inspect-api";
-
-export interface WindowEnv {
-  widthPx: number;
-  heightPx: number;
-  deviceWidthPx: number;
-  deviceHeightPx: number;
-  dppx: number;
-}
+import type { WindowEnv, inspectApi } from "./inspect-api";
 
 declare module "webext-bridge" {
   export interface ProtocolMap {
@@ -16,7 +8,7 @@ declare module "webext-bridge" {
       ReturnType<typeof inspectApi.inspectElement>
     >;
     findMatchingRule: ProtocolWithReturn<
-      { selector: string },
+      { selector: string; prop: string; value: string },
       ReturnType<typeof inspectApi.findStyleRule>
     >;
     resize: WindowEnv;

@@ -1,9 +1,9 @@
-import type { MatchResult } from "./eval";
+import type { InspectResult } from "../inspect-api";
 import type {
   MatchedLayerBlockRule,
   MatchedMediaRule,
   MatchedRule,
-} from "./matched-rule";
+} from "../inspect-api";
 
 import { compileQuery, matches } from "media-query-fns";
 import {
@@ -99,7 +99,7 @@ export function pick<T, K extends keyof T>(obj: T, paths: K[]): Pick<T, K> {
  */
 export const isRuleApplied = (
   styleRule: MatchedRule,
-  env: MatchResult["env"]
+  env: InspectResult["env"]
 ): boolean => {
   if (!styleRule.parentRule) return true;
   if (styleRule.type === "media") {
@@ -112,7 +112,7 @@ export const isRuleApplied = (
   return isRuleApplied(styleRule.parentRule, env);
 };
 
-export const sortRules = (rules: MatchedRule[], env: MatchResult["env"]) => {
+export const sortRules = (rules: MatchedRule[], env: InspectResult["env"]) => {
   return Array.from(rules).filter((rule) => {
     if (!isRuleApplied(rule, env)) {
       return false;
@@ -122,6 +122,9 @@ export const sortRules = (rules: MatchedRule[], env: MatchResult["env"]) => {
   });
 };
 
+/**
+ * Only keep relevant properties, filtering longhands/shorthands when possible
+ */
 export function compactCSS(styles: Record<string, any>) {
   const picked = new Set<string>();
   const omit = new Set<string>();
