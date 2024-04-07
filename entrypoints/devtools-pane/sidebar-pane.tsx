@@ -15,6 +15,7 @@ import * as Toast from "#components/toast";
 import { createToaster } from "@ark-ui/react/toast";
 import { XIcon } from "lucide-react";
 import { computeStyles, sortRules } from "./rules";
+import { hypenateProperty } from "./hyphenate-proprety";
 
 export function SidebarPane() {
   const [result, setResult] = useState(null as MatchResult | null);
@@ -32,6 +33,7 @@ export function SidebarPane() {
     [result, size]
   );
   const { styles, order, ruleByProp } = computeStyles(sorted);
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
 
   if (!result) {
     return (
@@ -48,12 +50,12 @@ export function SidebarPane() {
       <Toaster />
       {result && (
         <Stack pb="4" fontFamily="sans-serif">
-          <Box textStyle="lg">
+          {/* <Box textStyle="lg">
             {"<"}
             {result.displayName}
             {">"} matched {result?.rules?.length} rules
           </Box>
-          <code>{result.classes.join(" ")}</code>
+          <code>{result.classes.join(" ")}</code> */}
           <Flex
             direction="column"
             textStyle="sm"
@@ -87,7 +89,8 @@ export function SidebarPane() {
                 </styled.code>
               );
             })}
-            <styled.hr my="1" opacity="0.2" />
+            {/* <styled.hr my="1" opacity="0.2" /> */}
+            <styled.hr my="1" opacity="0" />
             {/* TODO layer separation */}
             {/* TODO media separation */}
             {Array.from(order).map((key, index) => {
@@ -128,27 +131,22 @@ export function SidebarPane() {
                         color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
                       }}
                       onChange={(e) => {
-                        console.log(rule.selector);
                         evaluator.el((el, className) => {
                           try {
                             el.classList.toggle(className);
-                          } catch {}
+                          } catch (err) {
+                            console.log(err);
+                          }
                         }, prettySelector.slice(1));
                       }}
                     />
                     {/* TODO editable */}
-                    <Editable.Root
-                      activationMode="focus"
-                      placeholder={key}
-                      // var(--webkit-css-property-color,var(--sys-color-token-property-special))
+
+                    <styled.span
                       className={css({ color: "rgb(92, 213, 251)" })}
-                      autoResize
                     >
-                      <Editable.Area>
-                        <Editable.Input />
-                        <Editable.Preview />
-                      </Editable.Area>
-                    </Editable.Root>
+                      {key}
+                    </styled.span>
                     <styled.span mr="6px">:</styled.span>
                     {isColor(computedValue) && (
                       <styled.div
@@ -160,7 +158,35 @@ export function SidebarPane() {
                         style={{ backgroundColor: computedValue }}
                       />
                     )}
-                    <styled.span>{matchValue}</styled.span>
+                    <Editable.Root
+                      activationMode="focus"
+                      placeholder={matchValue}
+                      // var(--webkit-css-property-color,var(--sys-color-token-property-special))
+                      autoResize
+                      onValueCommit={async (update) => {
+                        const propValue = overrides[key] || matchValue;
+                        if (!update.value || update.value === propValue) return;
+
+                        const hasUpdated = await evaluator.findMatchingRule(
+                          prettySelector,
+                          hypenateProperty(key),
+                          update.value
+                        );
+                        console.log({ hasUpdated });
+
+                        if (hasUpdated) {
+                          setOverrides((overrides) => ({
+                            ...overrides,
+                            [key]: update.value,
+                          }));
+                        }
+                      }}
+                    >
+                      <Editable.Area>
+                        <Editable.Input />
+                        <Editable.Preview />
+                      </Editable.Area>
+                    </Editable.Root>
                     {matchValue.startsWith("var(--") && computedValue && (
                       <Tooltip.Root
                         openDelay={0}
@@ -178,6 +204,7 @@ export function SidebarPane() {
                             const tooltipContent = document.querySelector(
                               `[data-tooltipid="content${key + index}" ]`
                             )?.parentElement as HTMLElement;
+                            if (!tooltipContent) return;
 
                             if (!tooltipContent.dataset.overflow) return;
 

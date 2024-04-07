@@ -125,6 +125,53 @@ export const evaluator = {
       port.onMessage.removeListener(handlePortMessage);
     };
   },
+  findMatchingRule: (selector: string, prop: string, value: string) => {
+    return evalFn((selector) => {
+      /**
+       * Recursively finds all matching CSS rules, traversing @media queries and @layer blocks
+       */
+      function findMatchingRule(rules: CSSRule[]): CSSStyleRule | undefined {
+        for (const cssRule of rules) {
+          if (cssRule instanceof CSSStyleRule) {
+            if (cssRule.selectorText === selector) {
+              return cssRule;
+            }
+          }
+
+          if (
+            cssRule instanceof CSSMediaRule ||
+            cssRule instanceof CSSLayerBlockRule
+          ) {
+            const styleRule = findMatchingRule(Array.from(cssRule.cssRules));
+            if (styleRule) {
+              return styleRule;
+            }
+          }
+        }
+      }
+
+      // console.log({ el, className, selector });
+      const findStyleRule = () => {
+        const sheets = Array.from(document.styleSheets);
+        for (const sheet of sheets) {
+          if (!sheet.cssRules) return;
+
+          const rule = findMatchingRule(Array.from(sheet.cssRules));
+
+          if (rule) {
+            return rule;
+          }
+        }
+      };
+
+      const styleRule = findStyleRule();
+      if (styleRule) {
+        console.log(styleRule);
+        // styleRule.style.setProperty(prop, value);
+        return styleRule;
+      }
+    }, selector);
+  },
 };
 
 export interface MatchedStyleRule {
