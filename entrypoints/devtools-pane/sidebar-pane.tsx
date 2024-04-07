@@ -139,14 +139,24 @@ export function SidebarPane() {
                         lazyMount
                         // Restore textDecoration on close
                         onOpenChange={(details) => {
-                          if (!details.open) {
-                            const tooltipTrigger = document.querySelector(
-                              `[data-tooltipid="trigger${key + index}" ]`
-                            ) as HTMLElement;
-                            if (!tooltipTrigger) return;
-                            tooltipTrigger.style.textDecoration = "";
+                          const tooltipTrigger = document.querySelector(
+                            `[data-tooltipid="trigger${key + index}" ]`
+                          ) as HTMLElement;
+                          if (!tooltipTrigger) return;
+
+                          if (details.open) {
+                            const tooltipContent = document.querySelector(
+                              `[data-tooltipid="content${key + index}" ]`
+                            )?.parentElement as HTMLElement;
+
+                            if (!tooltipContent.dataset.overflow) return;
+
+                            tooltipTrigger.style.textDecoration = "underline";
                             return;
                           }
+
+                          tooltipTrigger.style.textDecoration = "";
+                          return;
                         }}
                       >
                         <Tooltip.Trigger asChild>
@@ -165,45 +175,37 @@ export function SidebarPane() {
                         </Tooltip.Trigger>
                         <Portal>
                           <Tooltip.Positioner>
-                            <Tooltip.Content
-                              data-tooltipid={`content${key}` + index}
-                              maxW="var(--available-width)"
-                              animation="unset"
+                            <span
+                              // Only show tooltip if text is overflowing
+                              ref={(node) => {
+                                const tooltipTrigger = document.querySelector(
+                                  `[data-tooltipid="trigger${key + index}" ]`
+                                ) as HTMLElement;
+                                if (!tooltipTrigger) return;
+
+                                const tooltipContent = node as HTMLElement;
+                                if (!tooltipContent) return;
+
+                                if (
+                                  tooltipTrigger.offsetWidth <
+                                  tooltipTrigger.scrollWidth
+                                ) {
+                                  // Text is overflowing, add tooltip
+                                  tooltipContent.style.display = "";
+                                  tooltipContent.dataset.overflow = "true";
+                                } else {
+                                  tooltipContent.style.display = "none";
+                                }
+                              }}
                             >
-                              <span
-                                // Only show tooltip if text is overflowing
-                                ref={(node) => {
-                                  const tooltipTrigger = document.querySelector(
-                                    `[data-tooltipid="trigger${key + index}" ]`
-                                  ) as HTMLElement;
-                                  if (!tooltipTrigger) return;
-
-                                  // const tooltipContent = document.querySelector(
-                                  //   `[data-tooltipid="content${key + index}" ]`
-                                  // ) as HTMLElement;
-                                  const tooltipContent =
-                                    node?.parentElement as HTMLElement;
-                                  if (!tooltipContent) return;
-
-                                  // if (!details.open) {
-                                  //   tooltipTrigger.style.textDecoration = "";
-                                  //   return;
-                                  // }
-
-                                  if (
-                                    tooltipTrigger.offsetWidth <
-                                    tooltipTrigger.scrollWidth
-                                  ) {
-                                    // Text is overflowing, add tooltip
-                                    tooltipContent.style.display = "";
-                                    tooltipTrigger.style.textDecoration =
-                                      "underline";
-                                  }
-                                }}
+                              <Tooltip.Content
+                                data-tooltipid={`content${key}` + index}
+                                maxW="var(--available-width)"
+                                animation="unset"
                               >
                                 {computedValue}
-                              </span>
-                            </Tooltip.Content>
+                              </Tooltip.Content>
+                            </span>
                           </Tooltip.Positioner>
                         </Portal>
                       </Tooltip.Root>
