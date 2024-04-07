@@ -31,7 +31,7 @@ export function SidebarPane() {
     () => (result ? sortRules(result.rules, { ...result.env, ...size }) : []),
     [result, size]
   );
-  const { styles, order } = computeStyles(sorted);
+  const { styles, order, ruleByProp } = computeStyles(sorted);
 
   if (!result) {
     return (
@@ -47,7 +47,7 @@ export function SidebarPane() {
     <>
       <Toaster />
       {result && (
-        <Stack px="4" fontFamily="sans-serif">
+        <Stack p="4" fontFamily="sans-serif">
           <Box textStyle="lg">
             {"<"}
             {result.displayName}
@@ -90,11 +90,11 @@ export function SidebarPane() {
             {/* TODO layer separation */}
             {/* TODO media separation */}
             {Array.from(order).map((key, index) => {
-              const match = styles[key];
-              const rule = match.rule as MatchedStyleRule;
+              const matchValue = styles[key];
+              const rule = ruleByProp[key] as MatchedStyleRule;
 
               const computedValue =
-                result.computedStyle[key] || result.cssVars[match.value];
+                result.computedStyle[key] || result.cssVars[matchValue];
 
               const prettySelector = rule.selector.replaceAll("\\.", ".");
 
@@ -130,8 +130,8 @@ export function SidebarPane() {
                         style={{ backgroundColor: computedValue }}
                       />
                     )}
-                    <styled.span>{match.value}</styled.span>
-                    {match.value.startsWith("var(--") && computedValue && (
+                    <styled.span>{matchValue}</styled.span>
+                    {matchValue.startsWith("var(--") && computedValue && (
                       <Tooltip.Root
                         openDelay={0}
                         closeDelay={0}

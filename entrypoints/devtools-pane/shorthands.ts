@@ -212,3 +212,11 @@ export const longhands = Object.values(shorthandProperties).reduce(
   (a, b) => [...a, ...b],
   []
 );
+
+export const shorthandForLonghand = {} as Record<string, string>;
+Object.entries(shorthandProperties).forEach(([longhand, shorthands]) => {
+  shorthands.forEach((shorthand) => {
+    shorthandForLonghand[shorthand as keyof typeof shorthandProperties] =
+      longhand;
+  });
+});
