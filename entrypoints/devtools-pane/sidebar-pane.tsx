@@ -45,12 +45,11 @@ export function SidebarPane() {
     null as Record<string, string | null> | null
   );
 
-  type ViewMode = "compact" | "grouped";
-  const [viewMode, setViewMode] = useState<ViewMode>("compact");
-  const [nestInMedia, setNestInMedia] = useState(false);
+  const [groupByLayer, setGroupByLayer] = useState(false);
+  const [groupByMedia, setGroupByMedia] = useState(false);
   const [visibleLayers, setVisibleLayers] = useState<string[]>([]);
 
-  console.log({ nestInMedia, viewMode }, computed);
+  // console.log({ groupByMedia, groupByLayer, visibleLayers }, computed);
 
   if (!inspected) {
     return (
@@ -87,6 +86,7 @@ export function SidebarPane() {
   return (
     <>
       <HStack alignItems="center">
+        {/* <span onClick={() => console.log(inspected)}>Log inspect</span> */}
         <HStack gap="1px" alignItems="center">
           <input
             type="checkbox"
@@ -99,7 +99,7 @@ export function SidebarPane() {
                 setVisibleLayers(Array.from(computed.rulesByLayer.keys()));
               }
 
-              setViewMode(isChecked ? "grouped" : "compact");
+              setGroupByLayer(isChecked);
             }}
           />
           <label htmlFor="view-mode">Group (@layer)</label>
@@ -110,16 +110,16 @@ export function SidebarPane() {
             className={checkbox}
             id="nest-in-media"
             aria-label="Nest in @media"
-            onChange={(e) => setNestInMedia(e.target.checked)}
+            onChange={(e) => setGroupByMedia(e.target.checked)}
           />
           <label htmlFor="nest-in-media">Group (@media)</label>
         </HStack>
-        {viewMode === "grouped" && (
+        {groupByLayer && (
           <>
             <HStack gap="1" alignItems="center">
               {Array.from(computed.rulesByLayer.keys()).map((layer) => {
                 return (
-                  <HStack gap="1px" alignItems="center">
+                  <HStack gap="1px" alignItems="center" key={layer}>
                     <input
                       key={layer}
                       type="checkbox"
@@ -215,11 +215,9 @@ export function SidebarPane() {
               <styled.hr my="1" opacity="0.2" />
             </>
           ) : null}
-          {/* TODO layer separation */}
-          {/* TODO media separation */}
-          {match(viewMode)
-            .with("compact", () => {
-              if (nestInMedia) {
+          {match(groupByLayer)
+            .with(false, () => {
+              if (groupByMedia) {
                 return (
                   <Stack>
                     {Array.from(computed.rulesInMedia.entries()).map(
@@ -266,8 +264,8 @@ export function SidebarPane() {
                 />
               ));
             })
-            .with("grouped", () => {
-              if (nestInMedia) {
+            .with(true, () => {
+              if (groupByMedia) {
                 return (
                   <Stack>
                     {Array.from(computed.rulesByLayerInMedia.entries())
@@ -452,7 +450,7 @@ const checkboxStyles = css.raw({
   fontSize: "10px",
   width: "13px",
   height: "13px",
-  mr: "4px",
+  px: "4px",
   accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
   color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
 });
@@ -526,7 +524,7 @@ const Declaration = (props: DeclarationProps) => {
           <EditableValue
             prop={prop}
             elementSelector={inspected.selector}
-            selector={prettySelector}
+            selector={rule.selector}
             matchValue={matchValue}
             override={override}
             setOverride={setOverride}
@@ -697,30 +695,6 @@ const EditableValue = (props: EditableValueProps) => {
   const ref = useRef(null as HTMLDivElement | null);
   const [key, setKey] = useState(0);
 
-  // Blur contentEditable when leaving `Atomic CSS` pane
-  useEffect(() => {
-    const resetFocus = () => {
-      if (ref.current?.dataset.focus != null) {
-        setKey((key) => key + 1);
-      }
-    };
-
-    const callback: Parameters<
-      typeof browser.runtime.onMessage.addListener
-    >[0] = (request, _sender, _sendResponse) => {
-      if (request.type === "devtools-hidden") {
-        resetFocus();
-      }
-    };
-
-    browser.runtime.onMessage.addListener(callback);
-
-    return () => {
-      browser.runtime.onMessage.removeListener(callback);
-      resetFocus();
-    };
-  }, []);
-
   const propValue = override || matchValue;
   const updateValue = (update: string) => {
     const kind =
@@ -755,6 +729,7 @@ const EditableValue = (props: EditableValueProps) => {
       <Editable.Area ref={ref}>
         <Editable.Input
           defaultValue={propValue}
+          onBlur={() => setKey((key) => key + 1)}
           className={css({
             // boxShadow: "var(--drop-shadow)",
             boxShadow:
@@ -773,7 +748,6 @@ const EditableValue = (props: EditableValueProps) => {
         />
         <Editable.Preview />
       </Editable.Area>
-      {/* TODO revert to default */}
       {override !== null && (
         <Tooltip.Root
           openDelay={0}
@@ -825,7 +799,7 @@ const useInspectedResult = () => {
   // Refresh on inspected element changed
   useEffect(() => {
     return evaluator.onSelectionChanged((update) => {
-      console.log(update);
+      // console.log(update);
       setResult(update);
     });
   }, []);
@@ -834,10 +808,9 @@ const useInspectedResult = () => {
   useEffect(() => {
     return evaluator.onPaneShown(async () => {
       const update = await evaluator.inspectElement();
-      console.log(update);
-      if (!update) return;
+      // console.log(update);
 
-      setResult(update);
+      setResult(update ?? null);
     });
   }, []);
 

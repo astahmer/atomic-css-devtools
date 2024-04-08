@@ -19,7 +19,7 @@ const evalEl = <T extends AnyElementFunction>(
       "(" +
       fn.toString() +
       ")(" +
-      ["$0 || (document.documentElement)"]
+      ["$0"]
         .concat(args as any)
         .map((arg, index) => (index === 0 ? arg : JSON.stringify(arg)))
         .join() +
@@ -56,6 +56,8 @@ const evalFn = <T extends AnyFunction>(fn: T, ...args: Parameters<T>) => {
 
 const inspect = async () => {
   const selector = await evalEl((el) => {
+    if (!el) return null;
+
     const rcssescape = /([\0-\x1f\x7f]|^-?\d)|^-$|^-|[^\x80-\uFFFF\w-]/g;
     const fcssescape = function (ch: string, asCodePoint: string) {
       if (!asCodePoint) return "\\" + ch;
@@ -95,7 +97,7 @@ const inspect = async () => {
 
     function getUniqueSelector(element: HTMLElement) {
       if (element.id) {
-        return "#" + element.id;
+        return "#" + esc(element.id);
       }
 
       if (["HTML", "BODY"].includes(element.tagName)) {
@@ -129,6 +131,8 @@ const inspect = async () => {
     return getUniqueSelector(el);
   });
 
+  if (!selector) return null;
+
   return await sendMessage(
     "inspectElement",
     { selector: selector },
@@ -147,12 +151,10 @@ export const evaluator = {
     );
   },
   inspectElement: inspect,
-  onSelectionChanged: (cb: (element: InspectResult) => void) => {
+  onSelectionChanged: (cb: (element: InspectResult | null) => void) => {
     const handleSelectionChanged = async () => {
       const result = await inspect();
-      if (!result) return;
-
-      cb(result);
+      cb(result ?? null);
     };
     devtools.panels.elements.onSelectionChanged.addListener(
       handleSelectionChanged
@@ -182,6 +184,7 @@ export const evaluator = {
     });
   },
   updateStyleRule: async (payload: UpdateStyleRuleMessage) => {
+    console.log(payload);
     return sendMessage("updateStyleRule", payload, {
       context: "content-script",
       tabId: null as any,
