@@ -4,7 +4,15 @@ import * as Tooltip from "#components/tooltip";
 import { Collapsible, Editable, Portal } from "@ark-ui/react";
 import { createToaster } from "@ark-ui/react/toast";
 import { Undo2, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Dispatch,
+  ReactNode,
+  SetStateAction,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { match } from "ts-pattern";
 import { css, cx } from "../../styled-system/css";
 import { Center, Flex, HStack, Stack, styled } from "../../styled-system/jsx";
@@ -13,11 +21,12 @@ import { evaluator } from "./eval";
 import { InspectResult, MatchedStyleRule } from "./inspect-api";
 import { hypenateProperty } from "./lib/hyphenate-proprety";
 import { isColor } from "./lib/is-color";
-import { computeStyles, sortRules } from "./lib/rules";
-
-const implicitOuterLayer = "<implicit_outer_layer>";
-const noMedia = "<no_media>";
-const inlineStyleSelector = "<style>";
+import {
+  StyleRuleWithProp,
+  computeStyles,
+  sortRules,
+  symbols,
+} from "./lib/rules";
 
 export function SidebarPane() {
   const inspected = useInspectedResult();
@@ -30,7 +39,8 @@ export function SidebarPane() {
         : [],
     [inspected, size]
   );
-  const { styles, order, ruleByProp } = computeStyles(sorted);
+  const computed = computeStyles(sorted);
+  // const { styles, order, ruleByProp, symbols } = computed;
   const [overrides, setOverrides] = useState(
     null as Record<string, string | null> | null
   );
@@ -40,41 +50,7 @@ export function SidebarPane() {
   const [nestInMedia, setNestInMedia] = useState(false);
   const [visibleLayers, setVisibleLayers] = useState<string[]>([]);
 
-  const rulesByLayer = useMemo(() => {
-    const layers = new Map<
-      string,
-      Array<MatchedStyleRule & { prop: string }>
-    >();
-    order.forEach((prop) => {
-      const rule = ruleByProp[prop];
-      if (!rule) return;
-      const layer = rule.layer || implicitOuterLayer;
-      layers.set(layer, (layers.get(layer) || []).concat({ ...rule, prop }));
-    });
-
-    return layers;
-  }, [sorted, ruleByProp]);
-
-  const rulesByLayerInMedia = useMemo(() => {
-    const layers = new Map<
-      string,
-      Record<string, Array<MatchedStyleRule & { prop: string }>>
-    >();
-    order.forEach((prop) => {
-      const rule = ruleByProp[prop];
-      if (!rule) return;
-      const layer = rule.layer || implicitOuterLayer;
-      const media = rule.media || noMedia;
-      const currentLayer = layers.get(layer) || {};
-      const currentMedia = currentLayer[media] || [];
-      currentMedia.push({ ...rule, prop });
-      layers.set(layer, { ...currentLayer, [media]: currentMedia });
-    });
-
-    return layers;
-  }, [sorted, ruleByProp, nestInMedia]);
-
-  console.log({ nestInMedia, viewMode }, rulesByLayerInMedia);
+  console.log({ nestInMedia, viewMode }, computed);
 
   if (!inspected) {
     return (
@@ -111,20 +87,6 @@ export function SidebarPane() {
   return (
     <>
       <HStack alignItems="center">
-        {/* <select
-          value={viewMode}
-          onChange={(e) => {
-            const viewMode = e.target.value as ViewMode;
-            if (viewMode === "grouped") {
-              setVisibleLayers(Array.from(rulesByLayer.keys()));
-            }
-
-            setViewMode(viewMode);
-          }}
-        >
-          <option value="compact">Compact</option>
-          <option value="grouped">Grouped</option>
-        </select> */}
         <HStack gap="1px" alignItems="center">
           <input
             type="checkbox"
@@ -134,13 +96,13 @@ export function SidebarPane() {
             onChange={(e) => {
               const isChecked = e.target.checked;
               if (isChecked) {
-                setVisibleLayers(Array.from(rulesByLayer.keys()));
+                setVisibleLayers(Array.from(computed.rulesByLayer.keys()));
               }
 
               setViewMode(isChecked ? "grouped" : "compact");
             }}
           />
-          <label htmlFor="view-mode">Group</label>
+          <label htmlFor="view-mode">Group (@layer)</label>
         </HStack>
         <HStack gap="1px" alignItems="center">
           <input
@@ -150,12 +112,12 @@ export function SidebarPane() {
             aria-label="Nest in @media"
             onChange={(e) => setNestInMedia(e.target.checked)}
           />
-          <label htmlFor="nest-in-media">Nest in @media</label>
+          <label htmlFor="nest-in-media">Group (@media)</label>
         </HStack>
         {viewMode === "grouped" && (
           <>
             <HStack gap="1" alignItems="center">
-              {Array.from(rulesByLayer.keys()).map((layer) => {
+              {Array.from(computed.rulesByLayer.keys()).map((layer) => {
                 return (
                   <HStack gap="1px" alignItems="center">
                     <input
@@ -176,7 +138,7 @@ export function SidebarPane() {
                     />
                     <label htmlFor={"layer-" + layer}>
                       {layer}
-                      {""}({rulesByLayer.get(layer)?.length})
+                      {""}({computed.rulesByLayer.get(layer)?.length})
                     </label>
                   </HStack>
                 );
@@ -185,7 +147,7 @@ export function SidebarPane() {
             {visibleLayers.length === 0 ? (
               <button
                 onClick={() =>
-                  setVisibleLayers(Array.from(rulesByLayer.keys()))
+                  setVisibleLayers(Array.from(computed.rulesByLayer.keys()))
                 }
               >
                 Show all
@@ -233,10 +195,10 @@ export function SidebarPane() {
                         matchValue: value,
                         rule: {
                           type: "style",
-                          selector: inlineStyleSelector,
+                          selector: symbols.inlineStyleSelector,
                           style: { [key]: value },
                           parentRule: null,
-                          source: inlineStyleSelector,
+                          source: symbols.inlineStyleSelector,
                         },
                         inspected,
                         override: overrides?.["style-" + key] ?? null,
@@ -256,15 +218,43 @@ export function SidebarPane() {
           {/* TODO layer separation */}
           {/* TODO media separation */}
           {match(viewMode)
-            .with("compact", () =>
-              Array.from(order).map((key, index) => (
+            .with("compact", () => {
+              if (nestInMedia) {
+                return (
+                  <Stack>
+                    {Array.from(computed.rulesInMedia.entries()).map(
+                      ([media, rules]) => {
+                        return (
+                          <DeclarationGroup
+                            key={media}
+                            label={
+                              (media === symbols.noMedia ? "" : "@media ") +
+                              `${media} (${rules.length})`
+                            }
+                            content={
+                              <DeclarationList
+                                rules={rules}
+                                inspected={inspected}
+                                overrides={overrides}
+                                setOverrides={setOverrides}
+                              />
+                            }
+                          />
+                        );
+                      }
+                    )}
+                  </Stack>
+                );
+              }
+
+              return Array.from(computed.order).map((key, index) => (
                 <Declaration
                   {...{
                     key,
                     index,
                     prop: key,
-                    matchValue: styles[key],
-                    rule: ruleByProp[key],
+                    matchValue: computed.styles[key],
+                    rule: computed.ruleByProp[key],
                     inspected,
                     override: overrides?.[key] ?? null,
                     setOverride: (value) =>
@@ -274,82 +264,81 @@ export function SidebarPane() {
                       })),
                   }}
                 />
-              ))
-            )
+              ));
+            })
             .with("grouped", () => {
+              if (nestInMedia) {
+                return (
+                  <Stack>
+                    {Array.from(computed.rulesByLayerInMedia.entries())
+                      .filter(([layer]) => visibleLayers.includes(layer))
+                      .map(([layer, mediaMap]) => {
+                        const mediaKeys = Object.keys(mediaMap);
+                        return (
+                          <DeclarationGroup
+                            key={layer}
+                            label={
+                              (layer === symbols.implicitOuterLayer
+                                ? ""
+                                : "@layer ") + `${layer} (${mediaKeys.length})`
+                            }
+                            content={
+                              <Stack ml="12px">
+                                {mediaKeys.map((media) => {
+                                  const mediaRules = mediaMap[media];
+                                  return (
+                                    <DeclarationGroup
+                                      key={media}
+                                      label={
+                                        (media === symbols.noMedia
+                                          ? ""
+                                          : "@media ") +
+                                        `${media} (${mediaRules.length})`
+                                      }
+                                      content={
+                                        <DeclarationList
+                                          rules={mediaRules}
+                                          inspected={inspected}
+                                          overrides={overrides}
+                                          setOverrides={setOverrides}
+                                        />
+                                      }
+                                    />
+                                  );
+                                })}
+                              </Stack>
+                            }
+                          />
+                        );
+                      })}
+                  </Stack>
+                );
+              }
+
               return (
                 <Stack>
-                  {Array.from(rulesByLayer.entries())
-                    .filter((layer) => visibleLayers.includes(layer[0]))
-                    .map(([layer, rules]) => (
-                      <styled.div key={layer} className="group">
-                        <Collapsible.Root defaultOpen>
-                          <Collapsible.Trigger asChild>
-                            <styled.button
-                              className={cx(flex(), "group-btn")}
-                              cursor="pointer"
-                              w="100%"
-                              alignItems="center"
-                              fontSize="11px"
-                              opacity={{ base: 0.7, _hover: 1 }}
-                              _hover={{
-                                backgroundColor: "rgba(253, 252, 251, 0.1)",
-                              }}
-                              ml="6px"
-                            >
-                              <span
-                                className={css({
-                                  _before: {
-                                    content: {
-                                      base: "'▶︎'",
-                                      // @ts-expect-error
-                                      ".group-btn[aria-expanded=true] &": "'▼'",
-                                    },
-                                  },
-                                  mr: "2px",
-                                  w: "12px",
-                                  h: "12px",
-                                  cursor: "pointer",
-                                })}
-                              />
-                              <styled.span
-                                textDecoration={{
-                                  base: "none",
-                                  // @ts-expect-error
-                                  ".group-btn:hover &": "underline",
-                                }}
-                              >
-                                {layer === implicitOuterLayer ? "" : "@layer"}{" "}
-                                {layer} ({rules.length})
-                              </styled.span>
-                            </styled.button>
-                          </Collapsible.Trigger>
-                          <Collapsible.Content>
-                            {rules.map((rule, index) => {
-                              const key = rule.prop;
-                              return (
-                                <Declaration
-                                  {...{
-                                    key: index,
-                                    index,
-                                    prop: key,
-                                    matchValue: rule.style[key],
-                                    rule,
-                                    inspected,
-                                    override: overrides?.[key] ?? null,
-                                    setOverride: (value) =>
-                                      setOverrides((overrides) => ({
-                                        ...overrides,
-                                        [key]: value,
-                                      })),
-                                  }}
-                                />
-                              );
-                            })}
-                          </Collapsible.Content>
-                        </Collapsible.Root>
-                      </styled.div>
-                    ))}
+                  {Array.from(computed.rulesByLayer.entries())
+                    .filter(([layer]) => visibleLayers.includes(layer))
+                    .map(([layer, rules]) => {
+                      return (
+                        <DeclarationGroup
+                          key={layer}
+                          label={
+                            (layer === symbols.implicitOuterLayer
+                              ? ""
+                              : "@layer ") + `${layer} (${rules.length})`
+                          }
+                          content={
+                            <DeclarationList
+                              rules={rules}
+                              inspected={inspected}
+                              overrides={overrides}
+                              setOverrides={setOverrides}
+                            />
+                          }
+                        />
+                      );
+                    })}
                 </Stack>
               );
             })
@@ -359,6 +348,95 @@ export function SidebarPane() {
     </>
   );
 }
+
+interface DeclarationGroupProps {
+  label: string;
+  content: ReactNode;
+}
+
+const DeclarationGroup = (props: DeclarationGroupProps) => {
+  const { label, content } = props;
+
+  return (
+    <styled.div className="group">
+      <Collapsible.Root defaultOpen>
+        <Collapsible.Trigger asChild>
+          <styled.div
+            role="button"
+            className={cx(flex(), "group-btn")}
+            cursor="pointer"
+            w="100%"
+            alignItems="center"
+            fontSize="11px"
+            opacity={{ base: 0.7, _hover: 1 }}
+            _hover={{
+              backgroundColor: "rgba(253, 252, 251, 0.1)",
+            }}
+            ml="6px"
+          >
+            <span
+              className={css({
+                _before: {
+                  content: {
+                    base: "'▶︎'",
+                    // @ts-expect-error
+                    ".group-btn[aria-expanded=true] &": "'▼'",
+                  },
+                },
+                mr: "2px",
+                w: "12px",
+                h: "12px",
+                cursor: "pointer",
+              })}
+            />
+            <styled.span
+              textDecoration={{
+                base: "none",
+                // @ts-expect-error
+                ".group-btn:hover &": "underline",
+              }}
+            >
+              {label}
+            </styled.span>
+          </styled.div>
+        </Collapsible.Trigger>
+        <Collapsible.Content>{content}</Collapsible.Content>
+      </Collapsible.Root>
+    </styled.div>
+  );
+};
+
+interface DeclarationListProps {
+  rules: StyleRuleWithProp[];
+  inspected: InspectResult;
+  overrides: Record<string, string | null> | null;
+  setOverrides: Dispatch<SetStateAction<Record<string, string | null> | null>>;
+}
+
+const DeclarationList = (props: DeclarationListProps) => {
+  const { rules, inspected, overrides, setOverrides } = props;
+  return rules.map((rule, index) => {
+    const prop = rule.prop;
+    return (
+      <Declaration
+        {...{
+          key: index,
+          index,
+          prop,
+          matchValue: rule.style[prop],
+          rule,
+          inspected,
+          override: overrides?.[prop] ?? null,
+          setOverride: (value) =>
+            setOverrides((overrides) => ({
+              ...overrides,
+              [prop]: value,
+            })),
+        }}
+      />
+    );
+  });
+};
 
 interface DeclarationProps {
   prop: string;
@@ -645,7 +723,8 @@ const EditableValue = (props: EditableValueProps) => {
 
   const propValue = override || matchValue;
   const updateValue = (update: string) => {
-    const kind = selector === inlineStyleSelector ? "inlineStyle" : "cssRule";
+    const kind =
+      selector === symbols.inlineStyleSelector ? "inlineStyle" : "cssRule";
     return evaluator.updateStyleRule({
       selector: kind === "inlineStyle" ? elementSelector : selector,
       prop: hypenateProperty(prop),

@@ -50,14 +50,33 @@ export const getComputedLayer = (rule: MatchedLayerBlockRule) => {
   return stack;
 };
 
+export const symbols = {
+  implicitOuterLayer: "<implicit_outer_layer>",
+  noMedia: "<no_media>",
+  inlineStyleSelector: "<style>",
+};
+
+export interface StyleRuleWithProp extends MatchedStyleRule {
+  prop: string;
+}
+
+interface ComputeStylesOptions {
+  sortImplicitFirst?: boolean;
+}
+
 /**
  * Computes the final applied styles for a set of CSS rules
  * (Does not include default styles)
  *
  * Rules needs to have been sorted and filtered (with only relevant @media queries) beforehand
  */
-export const computeStyles = (rules: MatchedRule[]) => {
-  const ruleByProp = {} as Record<string, MatchedStyleRule>;
+export const computeStyles = (
+  rules: MatchedRule[],
+  options: ComputeStylesOptions = {}
+) => {
+  const { sortImplicitFirst = false } = options;
+
+  const ruleByProp = {} as Record<string, StyleRuleWithProp>;
   const styles = {} as Record<string, string>;
   const insertOrder = [] as string[];
 
@@ -67,7 +86,7 @@ export const computeStyles = (rules: MatchedRule[]) => {
     Object.keys(rule.style).forEach((key) => {
       insertOrder.push(key);
       styles[key] = rule.style[key];
-      ruleByProp[key] = rule;
+      ruleByProp[key] = { ...rule, prop: key };
     });
   });
 
@@ -77,7 +96,58 @@ export const computeStyles = (rules: MatchedRule[]) => {
 
   const updated = pick(styles, keys.pick);
 
-  return { styles: updated, ruleByProp, order };
+  const rulesInMedia = new Map<string, Array<StyleRuleWithProp>>(
+    sortImplicitFirst ? [[symbols.noMedia, []]] : undefined
+  );
+  order.forEach((prop) => {
+    const rule = ruleByProp[prop];
+    if (!rule) return;
+
+    const media = rule.media || symbols.noMedia;
+    rulesInMedia.set(media, (rulesInMedia.get(media) || []).concat(rule));
+  });
+
+  const rulesByLayer = new Map<string, Array<StyleRuleWithProp>>(
+    sortImplicitFirst ? [[symbols.implicitOuterLayer, []]] : undefined
+  );
+  order.forEach((prop) => {
+    const rule = ruleByProp[prop];
+    if (!rule) return;
+
+    const layer = rule.layer || symbols.implicitOuterLayer;
+    rulesByLayer.set(layer, (rulesByLayer.get(layer) || []).concat(rule));
+  });
+
+  const rulesByLayerInMedia = new Map<
+    string,
+    Record<string, Array<StyleRuleWithProp>>
+  >(
+    sortImplicitFirst
+      ? [[symbols.implicitOuterLayer, { [symbols.noMedia]: [] }]]
+      : undefined
+  );
+  order.forEach((prop) => {
+    const rule = ruleByProp[prop];
+    if (!rule) return;
+
+    const layer = rule.layer || symbols.implicitOuterLayer;
+    const media = rule.media || symbols.noMedia;
+
+    const currentLayer = rulesByLayerInMedia.get(layer) || {};
+    const currentMedia = currentLayer[media] || [];
+
+    currentMedia.push(rule);
+    rulesByLayerInMedia.set(layer, { ...currentLayer, [media]: currentMedia });
+  });
+
+  return {
+    styles: updated,
+    ruleByProp,
+    order,
+    rulesInMedia,
+    rulesByLayer,
+    rulesByLayerInMedia,
+  };
 };
 
 /** Pick given properties in object */
