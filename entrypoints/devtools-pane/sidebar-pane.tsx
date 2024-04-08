@@ -1,17 +1,23 @@
 import { IconButton } from "#components/icon-button";
 import * as Toast from "#components/toast";
 import * as Tooltip from "#components/tooltip";
-import { Editable, Portal } from "@ark-ui/react";
+import { Collapsible, Editable, Portal } from "@ark-ui/react";
 import { createToaster } from "@ark-ui/react/toast";
 import { Undo2, XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { css } from "../../styled-system/css";
-import { Center, Flex, Stack, styled } from "../../styled-system/jsx";
+import { match } from "ts-pattern";
+import { css, cx } from "../../styled-system/css";
+import { Center, Flex, HStack, Stack, styled } from "../../styled-system/jsx";
+import { flex } from "../../styled-system/patterns";
 import { evaluator } from "./eval";
 import { InspectResult, MatchedStyleRule } from "./inspect-api";
 import { hypenateProperty } from "./lib/hyphenate-proprety";
 import { isColor } from "./lib/is-color";
 import { computeStyles, sortRules } from "./lib/rules";
+
+const implicitOuterLayer = "<implicit_outer_layer>";
+const noMedia = "<no_media>";
+const inlineStyleSelector = "<style>";
 
 export function SidebarPane() {
   const inspected = useInspectedResult();
@@ -29,6 +35,47 @@ export function SidebarPane() {
     null as Record<string, string | null> | null
   );
 
+  type ViewMode = "compact" | "grouped";
+  const [viewMode, setViewMode] = useState<ViewMode>("compact");
+  const [nestInMedia, setNestInMedia] = useState(false);
+  const [visibleLayers, setVisibleLayers] = useState<string[]>([]);
+
+  const rulesByLayer = useMemo(() => {
+    const layers = new Map<
+      string,
+      Array<MatchedStyleRule & { prop: string }>
+    >();
+    order.forEach((prop) => {
+      const rule = ruleByProp[prop];
+      if (!rule) return;
+      const layer = rule.layer || implicitOuterLayer;
+      layers.set(layer, (layers.get(layer) || []).concat({ ...rule, prop }));
+    });
+
+    return layers;
+  }, [sorted, ruleByProp]);
+
+  const rulesByLayerInMedia = useMemo(() => {
+    const layers = new Map<
+      string,
+      Record<string, Array<MatchedStyleRule & { prop: string }>>
+    >();
+    order.forEach((prop) => {
+      const rule = ruleByProp[prop];
+      if (!rule) return;
+      const layer = rule.layer || implicitOuterLayer;
+      const media = rule.media || noMedia;
+      const currentLayer = layers.get(layer) || {};
+      const currentMedia = currentLayer[media] || [];
+      currentMedia.push({ ...rule, prop });
+      layers.set(layer, { ...currentLayer, [media]: currentMedia });
+    });
+
+    return layers;
+  }, [sorted, ruleByProp, nestInMedia]);
+
+  console.log({ nestInMedia, viewMode }, rulesByLayerInMedia);
+
   if (!inspected) {
     return (
       <Center px="4" h="100%">
@@ -41,8 +88,13 @@ export function SidebarPane() {
 
   // TODO group by layer/media
   // TODO filter
+  // TODO toggle btn to remove selectors with `*`
+  // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
+  // TODO ButtonGroup to select view mode (compact, detailed, grouped by none/layer/media) ?
+  // TODO CSS vars
   // TODO only atomic (filter out rules with more than 1 declaration)
   // TODO light mode
+  // TODO right click (context menu) + mimic the one from `Styles` devtools panel (Copy all declarations as CSS/JS, Copy all changes, Revert to default, etc)
   // TODO revert all to default
   // TODO edit component styles (match all elements with the same classes as the current element, allow updating class names that are part of the class list)
   // TODO allow toggling any declaration (not just atomic)
@@ -50,80 +102,263 @@ export function SidebarPane() {
   // TODO EditableValue for property name
   // TODO auto-completions for property names
   // TODO auto-completions for CSS vars
+  // TODO collapse/expand all
+  // TODO blue highlight for every elements matching the hovered selector
+  // TODO save preferences in idb ?
+
+  const inlineStyleKeys = Object.keys(inspected.style);
 
   return (
     <>
-      <Toaster />
-      {inspected && (
-        <Stack pb="4" fontFamily="sans-serif">
-          <Flex
-            direction="column"
-            textStyle="sm"
-            fontFamily="monospace"
-            fontSize="11px"
-            lineHeight="1.2"
-            className="group"
-          >
-            {/* TODO style */}
-            <styled.div mt="4">
-              {Object.keys(inspected.style).map((key, index) => {
-                const value = inspected.style[key] as string;
+      <HStack alignItems="center">
+        {/* <select
+          value={viewMode}
+          onChange={(e) => {
+            const viewMode = e.target.value as ViewMode;
+            if (viewMode === "grouped") {
+              setVisibleLayers(Array.from(rulesByLayer.keys()));
+            }
 
+            setViewMode(viewMode);
+          }}
+        >
+          <option value="compact">Compact</option>
+          <option value="grouped">Grouped</option>
+        </select> */}
+        <HStack gap="1px" alignItems="center">
+          <input
+            type="checkbox"
+            className={checkbox}
+            id="view-mode"
+            aria-label="View mode"
+            onChange={(e) => {
+              const isChecked = e.target.checked;
+              if (isChecked) {
+                setVisibleLayers(Array.from(rulesByLayer.keys()));
+              }
+
+              setViewMode(isChecked ? "grouped" : "compact");
+            }}
+          />
+          <label htmlFor="view-mode">Group</label>
+        </HStack>
+        <HStack gap="1px" alignItems="center">
+          <input
+            type="checkbox"
+            className={checkbox}
+            id="nest-in-media"
+            aria-label="Nest in @media"
+            onChange={(e) => setNestInMedia(e.target.checked)}
+          />
+          <label htmlFor="nest-in-media">Nest in @media</label>
+        </HStack>
+        {viewMode === "grouped" && (
+          <>
+            <HStack gap="1" alignItems="center">
+              {Array.from(rulesByLayer.keys()).map((layer) => {
                 return (
-                  <Declaration
-                    {...{
-                      key,
-                      index,
-                      prop: key,
-                      matchValue: value,
-                      rule: {
-                        type: "style",
-                        selector: inlineStyleSelector,
-                        style: { [key]: value },
-                        parentRule: null,
-                        source: inlineStyleSelector,
-                      },
-                      inspected,
-                      override: overrides?.["style-" + key] ?? null,
-                      setOverride: (value) =>
-                        setOverrides((overrides) => ({
-                          ...overrides,
-                          ["style-" + key]: value,
-                        })),
-                    }}
-                  />
+                  <HStack gap="1px" alignItems="center">
+                    <input
+                      key={layer}
+                      type="checkbox"
+                      name="layers"
+                      id={"layer-" + layer}
+                      value={layer}
+                      className={checkbox}
+                      checked={visibleLayers.includes(layer)}
+                      onChange={(e) =>
+                        setVisibleLayers(
+                          e.target.checked
+                            ? [...visibleLayers, layer]
+                            : visibleLayers.filter((l) => l !== layer)
+                        )
+                      }
+                    />
+                    <label htmlFor={"layer-" + layer}>
+                      {layer}
+                      {""}({rulesByLayer.get(layer)?.length})
+                    </label>
+                  </HStack>
                 );
               })}
-            </styled.div>
-            <styled.hr my="1" opacity="0.2" />
-            {/* TODO layer separation */}
-            {/* TODO media separation */}
-            {Array.from(order).map((key, index) => (
-              <Declaration
-                {...{
-                  key,
-                  index,
-                  prop: key,
-                  matchValue: styles[key],
-                  rule: ruleByProp[key],
-                  inspected,
-                  override: overrides?.[key] ?? null,
-                  setOverride: (value) =>
-                    setOverrides((overrides) => ({
-                      ...overrides,
-                      [key]: value,
-                    })),
-                }}
-              />
-            ))}
-          </Flex>
-        </Stack>
-      )}
+            </HStack>
+            {visibleLayers.length === 0 ? (
+              <button
+                onClick={() =>
+                  setVisibleLayers(Array.from(rulesByLayer.keys()))
+                }
+              >
+                Show all
+              </button>
+            ) : (
+              <button onClick={() => setVisibleLayers([])}>Hide all</button>
+            )}
+          </>
+        )}
+        {/* <Switch
+          size="sm"
+          checked={nestInMedia}
+          onCheckedChange={(details) => setNestInMedia(details.checked)}
+        >
+          <styled.span fontFamily="sans-serif" color="white" fontSize="12px">
+            Nest in @media
+          </styled.span>
+        </Switch> */}
+      </HStack>
+
+      <Toaster />
+      <Stack pb="4" fontFamily="sans-serif">
+        <Flex
+          direction="column"
+          textStyle="sm"
+          fontFamily="monospace"
+          fontSize="11px"
+          lineHeight="1.2"
+          className="group"
+          pt="2"
+        >
+          {/* TODO style */}
+          {inlineStyleKeys.length ? (
+            <>
+              <styled.div mt="4">
+                {inlineStyleKeys.map((key, index) => {
+                  const value = inspected.style[key] as string;
+
+                  return (
+                    <Declaration
+                      {...{
+                        key,
+                        index,
+                        prop: key,
+                        matchValue: value,
+                        rule: {
+                          type: "style",
+                          selector: inlineStyleSelector,
+                          style: { [key]: value },
+                          parentRule: null,
+                          source: inlineStyleSelector,
+                        },
+                        inspected,
+                        override: overrides?.["style-" + key] ?? null,
+                        setOverride: (value) =>
+                          setOverrides((overrides) => ({
+                            ...overrides,
+                            ["style-" + key]: value,
+                          })),
+                      }}
+                    />
+                  );
+                })}
+              </styled.div>
+              <styled.hr my="1" opacity="0.2" />
+            </>
+          ) : null}
+          {/* TODO layer separation */}
+          {/* TODO media separation */}
+          {match(viewMode)
+            .with("compact", () =>
+              Array.from(order).map((key, index) => (
+                <Declaration
+                  {...{
+                    key,
+                    index,
+                    prop: key,
+                    matchValue: styles[key],
+                    rule: ruleByProp[key],
+                    inspected,
+                    override: overrides?.[key] ?? null,
+                    setOverride: (value) =>
+                      setOverrides((overrides) => ({
+                        ...overrides,
+                        [key]: value,
+                      })),
+                  }}
+                />
+              ))
+            )
+            .with("grouped", () => {
+              return (
+                <Stack>
+                  {Array.from(rulesByLayer.entries())
+                    .filter((layer) => visibleLayers.includes(layer[0]))
+                    .map(([layer, rules]) => (
+                      <styled.div key={layer} className="group">
+                        <Collapsible.Root defaultOpen>
+                          <Collapsible.Trigger asChild>
+                            <styled.button
+                              className={cx(flex(), "group-btn")}
+                              cursor="pointer"
+                              w="100%"
+                              alignItems="center"
+                              fontSize="11px"
+                              opacity={{ base: 0.7, _hover: 1 }}
+                              _hover={{
+                                backgroundColor: "rgba(253, 252, 251, 0.1)",
+                              }}
+                              ml="6px"
+                            >
+                              <span
+                                className={css({
+                                  _before: {
+                                    content: {
+                                      base: "'▶︎'",
+                                      // @ts-expect-error
+                                      ".group-btn[aria-expanded=true] &": "'▼'",
+                                    },
+                                  },
+                                  mr: "2px",
+                                  w: "12px",
+                                  h: "12px",
+                                  cursor: "pointer",
+                                })}
+                              />
+                              <styled.span
+                                textDecoration={{
+                                  base: "none",
+                                  // @ts-expect-error
+                                  ".group-btn:hover &": "underline",
+                                }}
+                              >
+                                {layer === implicitOuterLayer ? "" : "@layer"}{" "}
+                                {layer} ({rules.length})
+                              </styled.span>
+                            </styled.button>
+                          </Collapsible.Trigger>
+                          <Collapsible.Content>
+                            {rules.map((rule, index) => {
+                              const key = rule.prop;
+                              return (
+                                <Declaration
+                                  {...{
+                                    key: index,
+                                    index,
+                                    prop: key,
+                                    matchValue: rule.style[key],
+                                    rule,
+                                    inspected,
+                                    override: overrides?.[key] ?? null,
+                                    setOverride: (value) =>
+                                      setOverrides((overrides) => ({
+                                        ...overrides,
+                                        [key]: value,
+                                      })),
+                                  }}
+                                />
+                              );
+                            })}
+                          </Collapsible.Content>
+                        </Collapsible.Root>
+                      </styled.div>
+                    ))}
+                </Stack>
+              );
+            })
+            .exhaustive()}
+        </Flex>
+      </Stack>
     </>
   );
 }
-
-const inlineStyleSelector = "<style>";
 
 interface DeclarationProps {
   prop: string;
@@ -134,6 +369,16 @@ interface DeclarationProps {
   override: string | null;
   setOverride: (value: string | null) => void;
 }
+
+const checkboxStyles = css.raw({
+  fontSize: "10px",
+  width: "13px",
+  height: "13px",
+  mr: "4px",
+  accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
+  color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
+});
+const checkbox = css(checkboxStyles);
 
 const Declaration = (props: DeclarationProps) => {
   {
@@ -159,22 +404,17 @@ const Declaration = (props: DeclarationProps) => {
         textDecoration={enabled ? "none" : "line-through !important"}
       >
         <styled.div display="flex" alignItems="center" mx="2">
-          <styled.input
+          <input
             type="checkbox"
             defaultChecked
-            css={{
+            className={css({
+              ...checkboxStyles,
               opacity: isTogglableClass ? "1" : "0",
               visibility: "hidden",
               _groupHover: {
                 visibility: "visible",
               },
-              fontSize: "10px",
-              width: "13px",
-              height: "13px",
-              mr: "4px",
-              accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
-              color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
-            }}
+            })}
             onChange={async () => {
               const isEnabled = await evaluator.el((el, className) => {
                 try {
