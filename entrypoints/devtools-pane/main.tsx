@@ -1,6 +1,5 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./panda.css";
 import { SidebarPane } from "./sidebar-pane.tsx";
 import { sendMessage } from "webext-bridge/devtools";
 
