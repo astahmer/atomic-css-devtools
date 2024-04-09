@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { match } from "ts-pattern";
 import { css, cx } from "../../styled-system/css";
 import {
@@ -46,6 +47,9 @@ import {
   symbols,
 } from "./lib/rules";
 
+type Override = { value: string; computed: string | null };
+type OverrideMap = Record<string, Override | null>;
+
 export function SidebarPane() {
   const inspected = useInspectedResult();
   const size = useWindowSize();
@@ -58,9 +62,12 @@ export function SidebarPane() {
     [inspected, size]
   );
 
-  const [overrides, setOverrides] = useState(
-    null as Record<string, string | null> | null
-  );
+  const api = useUndoRedo(null as OverrideMap | null);
+  const overrides = api.state;
+  const setOverrides = api.setState;
+
+  useHotkeys("mod+z", api.undo, []);
+  useHotkeys("mod+shift+z", api.redo, []);
 
   const [groupByLayer, setGroupByLayer] = useState(false);
   const [groupByMedia, setGroupByMedia] = useState(false);
@@ -426,17 +433,11 @@ export function SidebarPane() {
                         },
                         inspected,
                         override: overrides?.["style:" + key] ?? null,
-                        overrideComputedValue:
-                          overrides?.["style-override:" + key] ?? null,
-                        setOverride: (value) =>
+                        setOverride: (value, computed) =>
                           setOverrides((overrides) => ({
                             ...overrides,
-                            ["style:" + key]: value,
-                          })),
-                        setOverrideComputedValue: (value) =>
-                          setOverrides((overrides) => ({
-                            ...overrides,
-                            ["style-override:" + key]: value,
+                            ["style:" + key]:
+                              value != null ? { value, computed } : null,
                           })),
                       }}
                     />
@@ -486,17 +487,10 @@ export function SidebarPane() {
                     rule: computed.ruleByProp[key],
                     inspected,
                     override: overrides?.[key] ?? null,
-                    overrideComputedValue:
-                      overrides?.["override:" + key] ?? null,
-                    setOverride: (value) =>
+                    setOverride: (value, computed) =>
                       setOverrides((overrides) => ({
                         ...overrides,
-                        [key]: value,
-                      })),
-                    setOverrideComputedValue: (value) =>
-                      setOverrides((overrides) => ({
-                        ...overrides,
-                        ["override:" + key]: value,
+                        [key]: value != null ? { value, computed } : null,
                       })),
                   }}
                 />
@@ -646,8 +640,8 @@ const DeclarationGroup = (props: DeclarationGroupProps) => {
 interface DeclarationListProps {
   rules: StyleRuleWithProp[];
   inspected: InspectResult;
-  overrides: Record<string, string | null> | null;
-  setOverrides: Dispatch<SetStateAction<Record<string, string | null> | null>>;
+  overrides: OverrideMap | null;
+  setOverrides: Dispatch<SetStateAction<OverrideMap | null>>;
 }
 
 const DeclarationList = (props: DeclarationListProps) => {
@@ -664,16 +658,10 @@ const DeclarationList = (props: DeclarationListProps) => {
           rule,
           inspected,
           override: overrides?.[prop] ?? null,
-          overrideComputedValue: overrides?.["override:" + prop] ?? null,
-          setOverride: (value) =>
+          setOverride: (value, computed) =>
             setOverrides((overrides) => ({
               ...overrides,
-              [prop]: value,
-            })),
-          setOverrideComputedValue: (value) =>
-            setOverrides((overrides) => ({
-              ...overrides,
-              ["override:" + prop]: value,
+              [prop]: value != null ? { value, computed } : null,
             })),
         }}
       />
@@ -682,14 +670,7 @@ const DeclarationList = (props: DeclarationListProps) => {
 };
 
 interface DeclarationProps
-  extends Pick<
-    EditableValueProps,
-    | "override"
-    | "overrideComputedValue"
-    | "setOverride"
-    | "setOverrideComputedValue"
-  > {
-  prop: string;
+  extends Pick<EditableValueProps, "prop" | "override" | "setOverride"> {
   index: number;
   matchValue: string;
   rule: MatchedStyleRule;
@@ -707,264 +688,257 @@ const checkboxStyles = css.raw({
 const checkbox = css(checkboxStyles);
 
 const Declaration = (props: DeclarationProps) => {
-  {
-    const {
-      prop,
-      index,
-      matchValue,
-      rule,
-      inspected,
-      override,
-      overrideComputedValue,
-      setOverride,
-      setOverrideComputedValue,
-    } = props;
+  const { prop, index, matchValue, rule, inspected, override, setOverride } =
+    props;
 
-    const computedValue =
-      overrideComputedValue ||
-      inspected.computedStyle[prop] ||
-      inspected.cssVars[matchValue];
+  const computedValue =
+    override?.computed ||
+    inspected.computedStyle[prop] ||
+    inspected.cssVars[matchValue];
 
-    const prettySelector = unescapeString(rule.selector);
-    const isTogglableClass =
-      prettySelector.startsWith(".") && !prettySelector.includes(" ");
+  const prettySelector = unescapeString(rule.selector);
+  const isTogglableClass =
+    prettySelector.startsWith(".") && !prettySelector.includes(" ");
 
-    const [enabled, setEnabled] = useState(true);
-    const id = useId();
-    // TODO update computed value when overriden
+  const [enabled, setEnabled] = useState(true);
+  const id = useId();
 
-    return (
-      <styled.code
-        display="flex"
-        flexDirection="column"
-        gap="1px"
-        // var(--sys-color-state-hover-on-subtle)
-        _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
-        textDecoration={enabled ? "none" : "line-through !important"}
-      >
-        <styled.div display="flex" alignItems="flex-start" mr="2">
-          <input
-            id={id}
-            type="checkbox"
-            defaultChecked
-            className={css({
-              ...checkboxStyles,
-              opacity: isTogglableClass ? "1" : "0",
-              visibility: "hidden",
-              _groupHover: {
-                visibility: "visible",
-              },
-            })}
-            onChange={async () => {
-              const isEnabled = await evaluator.el((el, className) => {
-                try {
-                  return el.classList.toggle(className);
-                } catch (err) {
-                  console.log(err);
-                }
-              }, prettySelector.slice(1));
-
-              if (typeof isEnabled === "boolean") {
-                setEnabled(isEnabled);
+  return (
+    <styled.code
+      display="flex"
+      flexDirection="column"
+      gap="1px"
+      // var(--sys-color-state-hover-on-subtle)
+      _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
+      textDecoration={enabled ? "none" : "line-through !important"}
+    >
+      <styled.div display="flex" alignItems="flex-start" mr="2">
+        <input
+          id={id}
+          type="checkbox"
+          defaultChecked
+          className={css({
+            ...checkboxStyles,
+            opacity: isTogglableClass ? "1" : "0",
+            visibility: "hidden",
+            _groupHover: {
+              visibility: "visible",
+            },
+          })}
+          onChange={async () => {
+            const isEnabled = await evaluator.el((el, className) => {
+              try {
+                return el.classList.toggle(className);
+              } catch (err) {
+                console.log(err);
               }
-            }}
+            }, prettySelector.slice(1));
+
+            if (typeof isEnabled === "boolean") {
+              setEnabled(isEnabled);
+            }
+          }}
+        />
+        {/* TODO editable property */}
+
+        <styled.label
+          htmlFor={id}
+          pl="4px"
+          className={css({ color: "rgb(92, 213, 251)" })}
+          whiteSpace="nowrap"
+        >
+          {hypenateProperty(prop)}
+        </styled.label>
+        <styled.span mr="6px">:</styled.span>
+        {isColor(computedValue) && (
+          <styled.div
+            display="inline-block"
+            border="1px solid #757575"
+            width="12px"
+            height="12px"
+            mr="4px"
+            style={{ backgroundColor: computedValue }}
           />
-          {/* TODO editable property */}
+        )}
+        <EditableValue
+          prop={prop}
+          elementSelector={inspected.selector}
+          selector={rule.selector}
+          matchValue={matchValue}
+          override={override}
+          setOverride={setOverride}
+        />
+        {matchValue.startsWith("var(--") && computedValue && (
+          <TooltipPrimitive.Root
+            openDelay={0}
+            closeDelay={0}
+            positioning={{ placement: "bottom" }}
+            lazyMount
+            // Restore textDecoration on close
+            onOpenChange={(details) => {
+              const tooltipTrigger = document.querySelector(
+                `[data-tooltipid="trigger${prop + index}" ]`
+              ) as HTMLElement;
+              if (!tooltipTrigger) return;
 
-          <styled.label
-            htmlFor={id}
-            pl="4px"
-            className={css({ color: "rgb(92, 213, 251)" })}
-            whiteSpace="nowrap"
-          >
-            {hypenateProperty(prop)}
-          </styled.label>
-          <styled.span mr="6px">:</styled.span>
-          {isColor(computedValue) && (
-            <styled.div
-              display="inline-block"
-              border="1px solid #757575"
-              width="12px"
-              height="12px"
-              mr="4px"
-              style={{ backgroundColor: computedValue }}
-            />
-          )}
-          <EditableValue
-            prop={prop}
-            elementSelector={inspected.selector}
-            selector={rule.selector}
-            matchValue={matchValue}
-            override={override}
-            overrideComputedValue={overrideComputedValue}
-            setOverride={setOverride}
-            setOverrideComputedValue={setOverrideComputedValue}
-          />
-          {matchValue.startsWith("var(--") && computedValue && (
-            <TooltipPrimitive.Root
-              openDelay={0}
-              closeDelay={0}
-              positioning={{ placement: "bottom" }}
-              lazyMount
-              // Restore textDecoration on close
-              onOpenChange={(details) => {
-                const tooltipTrigger = document.querySelector(
-                  `[data-tooltipid="trigger${prop + index}" ]`
-                ) as HTMLElement;
-                if (!tooltipTrigger) return;
+              if (details.open) {
+                const tooltipContent = document.querySelector(
+                  `[data-tooltipid="content${prop + index}" ]`
+                )?.parentElement as HTMLElement;
+                if (!tooltipContent) return;
 
-                if (details.open) {
-                  const tooltipContent = document.querySelector(
-                    `[data-tooltipid="content${prop + index}" ]`
-                  )?.parentElement as HTMLElement;
-                  if (!tooltipContent) return;
+                if (!tooltipContent.dataset.overflow) return;
 
-                  if (!tooltipContent.dataset.overflow) return;
-
-                  tooltipTrigger.style.textDecoration = "underline";
-                  return;
-                }
-
-                tooltipTrigger.style.textDecoration = "";
+                tooltipTrigger.style.textDecoration = "underline";
                 return;
-              }}
-            >
-              <TooltipPrimitive.Trigger asChild>
-                <styled.span
-                  data-tooltipid={`trigger${prop}` + index}
-                  ml="11px"
-                  fontSize="10px"
-                  opacity="0.7"
-                  textOverflow="ellipsis"
-                  overflow="hidden"
-                  whiteSpace="nowrap"
-                  maxWidth="130px"
-                >
-                  {computedValue}
-                </styled.span>
-              </TooltipPrimitive.Trigger>
-              <Portal>
-                <TooltipPrimitive.Positioner>
-                  <span
-                    // Only show tooltip if text is overflowing
-                    ref={(node) => {
-                      const tooltipTrigger = document.querySelector(
-                        `[data-tooltipid="trigger${prop + index}" ]`
-                      ) as HTMLElement;
-                      if (!tooltipTrigger) return;
-
-                      const tooltipContent = node as HTMLElement;
-                      if (!tooltipContent) return;
-
-                      if (
-                        tooltipTrigger.offsetWidth < tooltipTrigger.scrollWidth
-                      ) {
-                        // Text is overflowing, add tooltip
-                        tooltipContent.style.display = "";
-                        tooltipContent.dataset.overflow = "true";
-                      } else {
-                        tooltipContent.style.display = "none";
-                      }
-                    }}
-                  >
-                    <TooltipPrimitive.Content
-                      data-tooltipid={`content${prop}` + index}
-                      maxW="var(--available-width)"
-                      animation="unset"
-                    >
-                      {computedValue}
-                    </TooltipPrimitive.Content>
-                  </span>
-                </TooltipPrimitive.Positioner>
-              </Portal>
-            </TooltipPrimitive.Root>
-          )}
-          <styled.div ml="auto" display="flex" gap="2">
-            {(rule.media || rule.layer) && (
-              <styled.span display="none" opacity="0.4" ml="6px">
-                {rule.media}
-                {rule.layer ? `@layer ${rule.layer}` : ""}
-              </styled.span>
-            )}
-            <Tooltip
-              positioning={{ placement: "left" }}
-              content={
-                <>
-                  {rule.layer && (
-                    <span>
-                      @layer {rule.layer} {"{\n\n"}{" "}
-                    </span>
-                  )}
-                  {rule.media && (
-                    <styled.span ml="2">
-                      @media {rule.media} {"{\n\n"}{" "}
-                    </styled.span>
-                  )}
-                  <styled.span ml={rule.media || rule.layer ? "4" : "0"}>
-                    {prettySelector}
-                  </styled.span>
-                  {rule.media && <styled.span ml="2">{"}"}</styled.span>}
-                  {rule.layer && <span>{"}"}</span>}
-                  <styled.span mt="4">{rule.source}</styled.span>
-                </>
               }
-            >
+
+              tooltipTrigger.style.textDecoration = "";
+              return;
+            }}
+          >
+            <TooltipPrimitive.Trigger asChild>
               <styled.span
-                maxWidth={{
-                  base: "150px",
-                  sm: "200px",
-                  md: "300px",
-                }}
+                data-tooltipid={`trigger${prop}` + index}
+                ml="11px"
+                fontSize="10px"
+                opacity="0.7"
                 textOverflow="ellipsis"
                 overflow="hidden"
                 whiteSpace="nowrap"
-                opacity="0.7"
-                // cursor="pointer"
-                textDecoration={{
-                  _hover: "underline",
-                }}
-                onClick={async () => {
-                  await evaluator.copy(prettySelector);
-                }}
+                maxWidth="130px"
               >
-                {prettySelector}
+                {computedValue}
               </styled.span>
-            </Tooltip>
-          </styled.div>
+            </TooltipPrimitive.Trigger>
+            <Portal>
+              <TooltipPrimitive.Positioner>
+                <span
+                  // Only show tooltip if text is overflowing
+                  ref={(node) => {
+                    const tooltipTrigger = document.querySelector(
+                      `[data-tooltipid="trigger${prop + index}" ]`
+                    ) as HTMLElement;
+                    if (!tooltipTrigger) return;
+
+                    const tooltipContent = node as HTMLElement;
+                    if (!tooltipContent) return;
+
+                    if (
+                      tooltipTrigger.offsetWidth < tooltipTrigger.scrollWidth
+                    ) {
+                      // Text is overflowing, add tooltip
+                      tooltipContent.style.display = "";
+                      tooltipContent.dataset.overflow = "true";
+                    } else {
+                      tooltipContent.style.display = "none";
+                    }
+                  }}
+                >
+                  <TooltipPrimitive.Content
+                    data-tooltipid={`content${prop}` + index}
+                    maxW="var(--available-width)"
+                    animation="unset"
+                  >
+                    {computedValue}
+                  </TooltipPrimitive.Content>
+                </span>
+              </TooltipPrimitive.Positioner>
+            </Portal>
+          </TooltipPrimitive.Root>
+        )}
+        <styled.div ml="auto" display="flex" gap="2">
+          {(rule.media || rule.layer) && (
+            <styled.span display="none" opacity="0.4" ml="6px">
+              {rule.media}
+              {rule.layer ? `@layer ${rule.layer}` : ""}
+            </styled.span>
+          )}
+          <Tooltip
+            positioning={{ placement: "left" }}
+            content={
+              <>
+                {rule.layer && (
+                  <span>
+                    @layer {rule.layer} {"{\n\n"}{" "}
+                  </span>
+                )}
+                {rule.media && (
+                  <styled.span ml="2">
+                    @media {rule.media} {"{\n\n"}{" "}
+                  </styled.span>
+                )}
+                <styled.span ml={rule.media || rule.layer ? "4" : "0"}>
+                  {prettySelector}
+                </styled.span>
+                {rule.media && <styled.span ml="2">{"}"}</styled.span>}
+                {rule.layer && <span>{"}"}</span>}
+                <styled.span mt="4">{rule.source}</styled.span>
+              </>
+            }
+          >
+            <styled.span
+              maxWidth={{
+                base: "150px",
+                sm: "200px",
+                md: "300px",
+              }}
+              textOverflow="ellipsis"
+              overflow="hidden"
+              whiteSpace="nowrap"
+              opacity="0.7"
+              // cursor="pointer"
+              textDecoration={{
+                _hover: "underline",
+              }}
+              onClick={async () => {
+                await evaluator.copy(prettySelector);
+              }}
+            >
+              {prettySelector}
+            </styled.span>
+          </Tooltip>
         </styled.div>
-      </styled.code>
-    );
-  }
+      </styled.div>
+    </styled.code>
+  );
 };
 
 interface EditableValueProps {
+  /**
+   * Selector computed from the inspected element (window.$0 in content script)
+   * By traversing the DOM tree until reaching HTML so we can uniquely identify the element
+   */
   elementSelector: string;
+  /**
+   * One of the key of the MatchedStyleRule.style (basically an atomic CSS declaration)
+   */
   prop: string;
+  /**
+   * Selector from the MatchedStyleRule
+   */
   selector: string;
+  /**
+   * Value that was matched with this MatchedStyleRule for this property
+   */
   matchValue: string;
-  override: string | null;
-  overrideComputedValue: string | null;
-  setOverride: (value: string | null) => void;
-  setOverrideComputedValue: (value: string | null) => void;
+  override: { value: string; computed: string | null } | null;
+  /**
+   * When user overrides the value, we need the computed value (from window.getComputedStyle.getPropertyValue)
+   * This is mostly useful when the override is a CSS variable
+   * so we can show the underlying value as inlay hint and show the appropriate color preview
+   */
+  setOverride: (value: string | null, computed: string | null) => void;
 }
 
 const EditableValue = (props: EditableValueProps) => {
-  const {
-    elementSelector,
-    prop,
-    selector,
-    matchValue,
-    override,
-    setOverride,
-    setOverrideComputedValue,
-  } = props;
+  const { elementSelector, prop, selector, matchValue, override, setOverride } =
+    props;
 
-  // TODO cmd+z undo/redo
-  // TODO btn to revert to default
   const ref = useRef(null as HTMLDivElement | null);
   const [key, setKey] = useState(0);
 
-  const propValue = override || matchValue;
+  const propValue = override?.value || matchValue;
   const updateValue = (update: string) => {
     const kind =
       selector === symbols.inlineStyleSelector ? "inlineStyle" : "cssRule";
@@ -991,10 +965,7 @@ const EditableValue = (props: EditableValueProps) => {
 
         const { hasUpdated, computedValue } = await updateValue(update.value);
         if (hasUpdated) {
-          setOverride(update.value);
-          if (computedValue != null) {
-            setOverrideComputedValue(computedValue);
-          }
+          setOverride(update.value, computedValue);
         }
       }}
     >
@@ -1040,8 +1011,7 @@ const EditableValue = (props: EditableValueProps) => {
             onClick={async () => {
               const hasUpdated = await updateValue(matchValue);
               if (hasUpdated) {
-                setOverride(null);
-                setOverrideComputedValue(null);
+                setOverride(null, null);
               }
             }}
           />
@@ -1167,3 +1137,48 @@ const Tooltip = (props: TooltipProps) => {
     </TooltipPrimitive.Root>
   );
 };
+
+function useUndoRedo<T>(initialState: T) {
+  const [state, setState] = useState<T>(initialState);
+  const historyRef = useRef<T[]>([initialState]);
+  const indexRef = useRef(0);
+
+  const setCurrentState = (newState: React.SetStateAction<T>) => {
+    const resolvedState =
+      typeof newState === "function" ? (newState as Function)(state) : newState;
+    const newHistory = historyRef.current.slice(0, indexRef.current + 1);
+    newHistory.push(resolvedState);
+
+    historyRef.current = newHistory;
+    indexRef.current += 1;
+    setState(resolvedState);
+  };
+
+  const undo = () => {
+    const newIndex = Math.max(indexRef.current - 1, 0);
+    if (newIndex !== indexRef.current) {
+      indexRef.current = newIndex;
+      setState(historyRef.current[newIndex]);
+    }
+  };
+
+  const redo = () => {
+    const newIndex = Math.min(
+      indexRef.current + 1,
+      historyRef.current.length - 1
+    );
+    if (newIndex !== indexRef.current) {
+      indexRef.current = newIndex;
+      setState(historyRef.current[newIndex]);
+    }
+  };
+
+  return {
+    state,
+    setState: setCurrentState,
+    undo,
+    redo,
+    canUndo: indexRef.current > 0,
+    canRedo: indexRef.current < historyRef.current.length - 1,
+  };
+}
