@@ -1,11 +1,20 @@
 import { IconButton } from "#components/icon-button";
 import * as Toast from "#components/toast";
-import * as Tooltip from "#components/tooltip";
+import * as TooltipPrimitive from "#components/tooltip";
 import { Collapsible, Editable, Portal } from "@ark-ui/react";
 import { createToaster } from "@ark-ui/react/toast";
-import { Undo2, XIcon } from "lucide-react";
+import {
+  Eye,
+  EyeOffIcon,
+  LayersIcon,
+  MonitorSmartphone,
+  Undo2,
+  XIcon,
+} from "lucide-react";
 import {
   Dispatch,
+  Fragment,
+  PropsWithChildren,
   ReactNode,
   SetStateAction,
   useEffect,
@@ -15,8 +24,15 @@ import {
 } from "react";
 import { match } from "ts-pattern";
 import { css, cx } from "../../styled-system/css";
-import { Center, Flex, HStack, Stack, styled } from "../../styled-system/jsx";
-import { flex } from "../../styled-system/patterns";
+import {
+  Center,
+  Flex,
+  HStack,
+  Stack,
+  Wrap,
+  styled,
+} from "../../styled-system/jsx";
+import { flex, hstack } from "../../styled-system/patterns";
 import { evaluator } from "./eval";
 import { InspectResult, MatchedStyleRule } from "./inspect-api";
 import { hypenateProperty } from "./lib/hyphenate-proprety";
@@ -49,6 +65,12 @@ export function SidebarPane() {
   const [groupByMedia, setGroupByMedia] = useState(false);
   const [visibleLayers, setVisibleLayers] = useState<string[]>([]);
 
+  useEffect(() => {
+    browser.runtime.getPlatformInfo().then((info) => {
+      document.body.classList.add("platform-" + info.os);
+    });
+  }, []);
+
   // console.log({ groupByMedia, groupByLayer, visibleLayers }, computed);
 
   if (!inspected) {
@@ -61,11 +83,9 @@ export function SidebarPane() {
     );
   }
 
-  // TODO group by layer/media
   // TODO filter
   // TODO toggle btn to remove selectors with `*`
   // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
-  // TODO ButtonGroup to select view mode (compact, detailed, grouped by none/layer/media) ?
   // TODO CSS vars
   // TODO only atomic (filter out rules with more than 1 declaration)
   // TODO light mode
@@ -85,41 +105,104 @@ export function SidebarPane() {
 
   return (
     <>
-      <HStack alignItems="center">
-        {/* <span onClick={() => console.log(inspected)}>Log inspect</span> */}
-        <HStack gap="1px" alignItems="center">
-          <input
-            type="checkbox"
-            className={checkbox}
-            id="view-mode"
-            aria-label="View mode"
-            onChange={(e) => {
-              const isChecked = e.target.checked;
-              if (isChecked) {
-                setVisibleLayers(Array.from(computed.rulesByLayer.keys()));
-              }
+      <Collapsible.Root
+        className={css({
+          borderBottom: "1px solid #474747ff", // border-neutral-30
+          position: "sticky",
+          backgroundColor: "#282828", // neutral-15
+          top: "0",
+          transform: "translateY(-3px)",
+          overflow: "hidden",
+          zIndex: 1,
+        })}
+      >
+        <Flex direction="column" px="2px">
+          <Flex ml="auto" alignItems="center" position="relative" zIndex="2">
+            {/* <span onClick={() => console.log(inspected)}>Log inspect</span> */}
+            <Tooltip content="Group elements by @layer">
+              <Collapsible.Trigger asChild>
+                <styled.button
+                  aria-selected={groupByLayer}
+                  className="group"
+                  display="flex"
+                  justifyContent="center"
+                  alignItems="center"
+                  px="4px"
+                  height="26px"
+                  minWidth="28px"
+                  _hover={{
+                    backgroundColor:
+                      "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+                  }}
+                  _selected={{
+                    backgroundColor:
+                      "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+                    color: "var(--icon-toggled, rgb(124, 172, 248))",
+                  }}
+                >
+                  <LayersIcon
+                    className={css({
+                      w: "16px",
+                      h: "16px",
+                      opacity: { base: 0.8, _groupHover: 1 },
+                    })}
+                    onClick={() => {
+                      const update = !groupByLayer;
+                      if (update) {
+                        setVisibleLayers(
+                          Array.from(computed.rulesByLayer.keys())
+                        );
+                      }
 
-              setGroupByLayer(isChecked);
-            }}
-          />
-          <label htmlFor="view-mode">Group (@layer)</label>
-        </HStack>
-        <HStack gap="1px" alignItems="center">
-          <input
-            type="checkbox"
-            className={checkbox}
-            id="nest-in-media"
-            aria-label="Nest in @media"
-            onChange={(e) => setGroupByMedia(e.target.checked)}
-          />
-          <label htmlFor="nest-in-media">Group (@media)</label>
-        </HStack>
-        {groupByLayer && (
-          <>
-            <HStack gap="1" alignItems="center">
+                      setGroupByLayer(update);
+                    }}
+                  />
+                </styled.button>
+              </Collapsible.Trigger>
+            </Tooltip>
+            <Tooltip content="Group elements by @media">
+              <styled.button
+                aria-selected={groupByMedia}
+                className="group"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                px="4px"
+                mr="2px"
+                height="26px"
+                minWidth="28px"
+                _hover={{
+                  backgroundColor:
+                    "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+                }}
+                _selected={{
+                  backgroundColor:
+                    "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+                  color: "var(--icon-toggled, rgb(124, 172, 248))",
+                }}
+              >
+                <MonitorSmartphone
+                  className={css({
+                    w: "16px",
+                    h: "16px",
+                    opacity: { base: 0.8, _groupHover: 1 },
+                  })}
+                  onClick={() => {
+                    setGroupByMedia((current) => !current);
+                  }}
+                />
+              </styled.button>
+            </Tooltip>
+          </Flex>
+          <Collapsible.Content>
+            {/* var(--color-text-secondary) */}
+            <styled.div mt="-20px" mb="6px" fontSize="12px" color="#9aa0a6">
+              Toggle layer visibility
+            </styled.div>
+            <Wrap gap="2" alignItems="center" mb="2px">
               {Array.from(computed.rulesByLayer.keys()).map((layer) => {
                 return (
-                  <HStack gap="1px" alignItems="center" key={layer}>
+                  <HStack gap="2px" alignItems="center" key={layer}>
                     <input
                       key={layer}
                       type="checkbox"
@@ -143,30 +226,47 @@ export function SidebarPane() {
                   </HStack>
                 );
               })}
-            </HStack>
-            {visibleLayers.length === 0 ? (
-              <button
-                onClick={() =>
-                  setVisibleLayers(Array.from(computed.rulesByLayer.keys()))
-                }
-              >
-                Show all
-              </button>
-            ) : (
-              <button onClick={() => setVisibleLayers([])}>Hide all</button>
-            )}
-          </>
-        )}
-        {/* <Switch
-          size="sm"
-          checked={nestInMedia}
-          onCheckedChange={(details) => setNestInMedia(details.checked)}
-        >
-          <styled.span fontFamily="sans-serif" color="white" fontSize="12px">
-            Nest in @media
-          </styled.span>
-        </Switch> */}
-      </HStack>
+              {visibleLayers.length === 0 ? (
+                <button
+                  className={cx(
+                    "group",
+                    hstack({ gap: "4px", cursor: "pointer" })
+                  )}
+                  onClick={() =>
+                    setVisibleLayers(Array.from(computed.rulesByLayer.keys()))
+                  }
+                >
+                  <Eye
+                    className={css({
+                      w: "12px",
+                      h: "12px",
+                      opacity: { base: 0.5, _groupHover: 1 },
+                    })}
+                  />{" "}
+                  Show all
+                </button>
+              ) : (
+                <button
+                  className={cx(
+                    "group",
+                    hstack({ gap: "4px", cursor: "pointer" })
+                  )}
+                  onClick={() => setVisibleLayers([])}
+                >
+                  <EyeOffIcon
+                    className={css({
+                      w: "12px",
+                      h: "12px",
+                      opacity: { base: 0.5, _groupHover: 1 },
+                    })}
+                  />{" "}
+                  Hide all
+                </button>
+              )}
+            </Wrap>
+          </Collapsible.Content>
+        </Flex>
+      </Collapsible.Root>
 
       <Toaster />
       <Stack pb="4" fontFamily="sans-serif">
@@ -453,6 +553,9 @@ const checkboxStyles = css.raw({
   px: "4px",
   accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
   color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
+  "& + label": {
+    pl: "2px",
+  },
 });
 const checkbox = css(checkboxStyles);
 
@@ -469,6 +572,7 @@ const Declaration = (props: DeclarationProps) => {
       prettySelector.startsWith(".") && !prettySelector.includes(" ");
 
     const [enabled, setEnabled] = useState(true);
+    // TODO update computed value when overriden
 
     return (
       <styled.code
@@ -530,7 +634,7 @@ const Declaration = (props: DeclarationProps) => {
             setOverride={setOverride}
           />
           {matchValue.startsWith("var(--") && computedValue && (
-            <Tooltip.Root
+            <TooltipPrimitive.Root
               openDelay={0}
               closeDelay={0}
               positioning={{ placement: "bottom" }}
@@ -558,7 +662,7 @@ const Declaration = (props: DeclarationProps) => {
                 return;
               }}
             >
-              <Tooltip.Trigger asChild>
+              <TooltipPrimitive.Trigger asChild>
                 <styled.span
                   data-tooltipid={`trigger${prop}` + index}
                   ml="11px"
@@ -571,9 +675,9 @@ const Declaration = (props: DeclarationProps) => {
                 >
                   {computedValue}
                 </styled.span>
-              </Tooltip.Trigger>
+              </TooltipPrimitive.Trigger>
               <Portal>
-                <Tooltip.Positioner>
+                <TooltipPrimitive.Positioner>
                   <span
                     // Only show tooltip if text is overflowing
                     ref={(node) => {
@@ -596,17 +700,17 @@ const Declaration = (props: DeclarationProps) => {
                       }
                     }}
                   >
-                    <Tooltip.Content
+                    <TooltipPrimitive.Content
                       data-tooltipid={`content${prop}` + index}
                       maxW="var(--available-width)"
                       animation="unset"
                     >
                       {computedValue}
-                    </Tooltip.Content>
+                    </TooltipPrimitive.Content>
                   </span>
-                </Tooltip.Positioner>
+                </TooltipPrimitive.Positioner>
               </Portal>
-            </Tooltip.Root>
+            </TooltipPrimitive.Root>
           )}
           <styled.div ml="auto" display="flex" gap="2">
             {(rule.media || rule.layer) && (
@@ -615,61 +719,49 @@ const Declaration = (props: DeclarationProps) => {
                 {rule.layer ? `@layer ${rule.layer}` : ""}
               </styled.span>
             )}
-            <Tooltip.Root
-              openDelay={0}
-              closeDelay={0}
+            <Tooltip
               positioning={{ placement: "left" }}
-              lazyMount
-            >
-              <Tooltip.Trigger asChild>
-                <styled.span
-                  maxWidth={{
-                    base: "150px",
-                    sm: "200px",
-                    md: "300px",
-                  }}
-                  textOverflow="ellipsis"
-                  overflow="hidden"
-                  whiteSpace="nowrap"
-                  opacity="0.7"
-                  // cursor="pointer"
-                  textDecoration={{
-                    _hover: "underline",
-                  }}
-                  onClick={async () => {
-                    await evaluator.copy(prettySelector);
-                  }}
-                >
-                  {prettySelector}
-                </styled.span>
-              </Tooltip.Trigger>
-              <Portal>
-                <Tooltip.Positioner>
-                  <Tooltip.Content
-                    maxW="var(--available-width)"
-                    animation="unset"
-                    display="flex"
-                    flexDirection="column"
-                  >
-                    {rule.layer && (
-                      <span>
-                        @layer {rule.layer} {"{\n\n"}{" "}
-                      </span>
-                    )}
-                    {rule.media && (
-                      <styled.span ml="2">
-                        @media {rule.media} {"{\n\n"}{" "}
-                      </styled.span>
-                    )}
-                    <styled.span ml={rule.media ? "4" : "2"}>
-                      {prettySelector}
+              content={
+                <>
+                  {rule.layer && (
+                    <span>
+                      @layer {rule.layer} {"{\n\n"}{" "}
+                    </span>
+                  )}
+                  {rule.media && (
+                    <styled.span ml="2">
+                      @media {rule.media} {"{\n\n"}{" "}
                     </styled.span>
-                    {rule.media && <styled.span ml="2">{"}"}</styled.span>}
-                    {rule.layer && <span>{"}"}</span>}
-                  </Tooltip.Content>
-                </Tooltip.Positioner>
-              </Portal>
-            </Tooltip.Root>
+                  )}
+                  <styled.span ml={rule.media ? "4" : "2"}>
+                    {prettySelector}
+                  </styled.span>
+                  {rule.media && <styled.span ml="2">{"}"}</styled.span>}
+                  {rule.layer && <span>{"}"}</span>}
+                </>
+              }
+            >
+              <styled.span
+                maxWidth={{
+                  base: "150px",
+                  sm: "200px",
+                  md: "300px",
+                }}
+                textOverflow="ellipsis"
+                overflow="hidden"
+                whiteSpace="nowrap"
+                opacity="0.7"
+                // cursor="pointer"
+                textDecoration={{
+                  _hover: "underline",
+                }}
+                onClick={async () => {
+                  await evaluator.copy(prettySelector);
+                }}
+              >
+                {prettySelector}
+              </styled.span>
+            </Tooltip>
           </styled.div>
         </styled.div>
       </styled.code>
@@ -749,45 +841,30 @@ const EditableValue = (props: EditableValueProps) => {
         <Editable.Preview />
       </Editable.Area>
       {override !== null && (
-        <Tooltip.Root
-          openDelay={0}
-          closeDelay={0}
-          positioning={{ placement: "bottom" }}
-          lazyMount
+        <Tooltip
+          content={
+            <styled.div fontSize="10px" lineHeight="1.2" gap="1">
+              <span>Revert to default</span>
+              <span>({matchValue})</span>
+            </styled.div>
+          }
         >
-          <Tooltip.Trigger asChild>
-            <Undo2
-              className={css({
-                ml: "4px",
-                w: "10px",
-                h: "10px",
-                opacity: { base: 0.5, _hover: 1 },
-                cursor: "pointer",
-              })}
-              onClick={async () => {
-                const hasUpdated = await updateValue(matchValue);
-                if (hasUpdated) {
-                  setOverride(null);
-                }
-              }}
-            />
-          </Tooltip.Trigger>
-          <Portal>
-            <Tooltip.Positioner>
-              <Tooltip.Content
-                maxW="var(--available-width)"
-                animation="unset"
-                display="flex"
-                fontSize="10px"
-                lineHeight="1.2"
-                gap="1"
-              >
-                <span>Revert to default</span>
-                <span>({matchValue})</span>
-              </Tooltip.Content>
-            </Tooltip.Positioner>
-          </Portal>
-        </Tooltip.Root>
+          <Undo2
+            className={css({
+              ml: "4px",
+              w: "10px",
+              h: "10px",
+              opacity: { base: 0.5, _hover: 1 },
+              cursor: "pointer",
+            })}
+            onClick={async () => {
+              const hasUpdated = await updateValue(matchValue);
+              if (hasUpdated) {
+                setOverride(null);
+              }
+            }}
+          />
+        </Tooltip>
       )}
     </Editable.Root>
   );
@@ -862,3 +939,37 @@ const [Toaster, toast] = createToaster({
     );
   },
 });
+
+interface TooltipProps extends PropsWithChildren<TooltipPrimitive.RootProps> {
+  content: ReactNode;
+  portalled?: boolean;
+}
+
+const Tooltip = (props: TooltipProps) => {
+  const { children, content, portalled = true, ...rest } = props;
+  const Portallish = portalled ? Portal : Fragment;
+
+  return (
+    <TooltipPrimitive.Root
+      openDelay={0}
+      closeDelay={0}
+      positioning={{ placement: "bottom" }}
+      lazyMount
+      {...rest}
+    >
+      <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+      <Portallish>
+        <TooltipPrimitive.Positioner>
+          <TooltipPrimitive.Content
+            maxW="var(--available-width)"
+            animation="unset"
+            display="flex"
+            flexDirection="column"
+          >
+            {content}
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Positioner>
+      </Portallish>
+    </TooltipPrimitive.Root>
+  );
+};
