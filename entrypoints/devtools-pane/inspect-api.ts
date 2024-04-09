@@ -13,11 +13,12 @@ class InspectAPI {
     const computed = getComputedStyle(element);
     const matches = this.getMatchingRules(element);
     const cssVars = this.getCssVars(element);
+    const layersOrder = matches.layerOrders.flat();
 
     const serialized = {
       selector,
       rules: matches.rules,
-      layerOrders: matches.layerOrders,
+      layersOrder,
       cssVars,
       classes: [...element.classList].filter(Boolean),
       displayName: element.nodeName.toLowerCase(),
@@ -61,6 +62,18 @@ class InspectAPI {
         rule.media = parentMedia.media;
       }
     });
+
+    if (layersOrder.length > 0) {
+      serialized.rules = serialized.rules.sort((a, b) => {
+        if (!a.layer && !b.layer) return 0;
+        if (!a.layer) return -1;
+        if (!b.layer) return 1;
+
+        const aIndex = layersOrder.indexOf(a.layer);
+        const bIndex = layersOrder.indexOf(b.layer);
+        return aIndex - bIndex;
+      });
+    }
 
     return serialized;
   }
@@ -124,7 +137,7 @@ class InspectAPI {
       .map((v) => {
         return serialize(v);
       })
-      .filter(Boolean) as MatchedRule[];
+      .filter(Boolean) as MatchedStyleRule[];
 
     return { rules: serialized, layerOrders };
   }

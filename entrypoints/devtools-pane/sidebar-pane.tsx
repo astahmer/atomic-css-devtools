@@ -4,6 +4,7 @@ import * as TooltipPrimitive from "#components/tooltip";
 import { Collapsible, Editable, Portal } from "@ark-ui/react";
 import { createToaster } from "@ark-ui/react/toast";
 import {
+  BugIcon,
   Eye,
   EyeOffIcon,
   LayersIcon,
@@ -41,7 +42,7 @@ import { isColor } from "./lib/is-color";
 import {
   StyleRuleWithProp,
   computeStyles,
-  sortRules,
+  filterRulesByEnv,
   symbols,
 } from "./lib/rules";
 
@@ -49,14 +50,17 @@ export function SidebarPane() {
   const inspected = useInspectedResult();
   const size = useWindowSize();
 
-  const sorted = useMemo(
+  const filtered = useMemo(
     () =>
       inspected
-        ? sortRules(inspected.rules, { ...inspected.env, ...size })
+        ? filterRulesByEnv(inspected.rules, { ...inspected.env, ...size })
         : [],
     [inspected, size]
   );
-  const computed = computeStyles(sorted);
+
+  const computed = computeStyles(filtered, {
+    layersOrder: inspected?.layersOrder.flat(),
+  });
   // const { styles, order, ruleByProp, symbols } = computed;
   const [overrides, setOverrides] = useState(
     null as Record<string, string | null> | null
@@ -119,7 +123,35 @@ export function SidebarPane() {
       >
         <Flex direction="column" px="2px">
           <Flex ml="auto" alignItems="center" position="relative" zIndex="2">
-            {/* <span onClick={() => console.log(inspected)}>Log inspect</span> */}
+            <Tooltip content="Log inspected element">
+              <styled.button
+                className="group"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                px="4px"
+                height="26px"
+                minWidth="28px"
+                _hover={{
+                  backgroundColor:
+                    "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+                }}
+                _selected={{
+                  backgroundColor:
+                    "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+                  color: "var(--icon-toggled, rgb(124, 172, 248))",
+                }}
+                onClick={() => console.log(inspected)}
+              >
+                <BugIcon
+                  className={css({
+                    w: "16px",
+                    h: "16px",
+                    opacity: { base: 0.8, _groupHover: 1 },
+                  })}
+                />
+              </styled.button>
+            </Tooltip>
             <Tooltip content="Group elements by @layer">
               <Collapsible.Trigger asChild>
                 <styled.button
@@ -140,6 +172,16 @@ export function SidebarPane() {
                       "var(--sys-color-neutral-container, rgb(60, 60, 60))",
                     color: "var(--icon-toggled, rgb(124, 172, 248))",
                   }}
+                  onClick={() => {
+                    const update = !groupByLayer;
+                    if (update) {
+                      setVisibleLayers(
+                        Array.from(computed.rulesByLayer.keys())
+                      );
+                    }
+
+                    setGroupByLayer(update);
+                  }}
                 >
                   <LayersIcon
                     className={css({
@@ -147,16 +189,6 @@ export function SidebarPane() {
                       h: "16px",
                       opacity: { base: 0.8, _groupHover: 1 },
                     })}
-                    onClick={() => {
-                      const update = !groupByLayer;
-                      if (update) {
-                        setVisibleLayers(
-                          Array.from(computed.rulesByLayer.keys())
-                        );
-                      }
-
-                      setGroupByLayer(update);
-                    }}
                   />
                 </styled.button>
               </Collapsible.Trigger>
@@ -181,6 +213,9 @@ export function SidebarPane() {
                     "var(--sys-color-neutral-container, rgb(60, 60, 60))",
                   color: "var(--icon-toggled, rgb(124, 172, 248))",
                 }}
+                onClick={() => {
+                  setGroupByMedia((current) => !current);
+                }}
               >
                 <MonitorSmartphone
                   className={css({
@@ -188,9 +223,6 @@ export function SidebarPane() {
                     h: "16px",
                     opacity: { base: 0.8, _groupHover: 1 },
                   })}
-                  onClick={() => {
-                    setGroupByMedia((current) => !current);
-                  }}
                 />
               </styled.button>
             </Tooltip>

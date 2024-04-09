@@ -62,6 +62,7 @@ export interface StyleRuleWithProp extends MatchedStyleRule {
 
 interface ComputeStylesOptions {
   sortImplicitFirst?: boolean;
+  layersOrder?: string[];
 }
 
 /**
@@ -74,18 +75,20 @@ export const computeStyles = (
   rules: MatchedRule[],
   options: ComputeStylesOptions = {}
 ) => {
-  const { sortImplicitFirst = false } = options;
+  const { sortImplicitFirst = false, layersOrder } = options;
 
   const ruleByProp = {} as Record<string, StyleRuleWithProp>;
   const styles = {} as Record<string, string>;
   const insertOrder = [] as string[];
 
+  // console.log(rules);
   rules.forEach((rule) => {
     if (rule.type !== "style") return;
 
     Object.keys(rule.style).forEach((key) => {
       insertOrder.push(key);
       styles[key] = rule.style[key];
+      // console.log({ rule: rule.selector, key, value: rule.style[key] });
       ruleByProp[key] = { ...rule, prop: key };
     });
   });
@@ -95,6 +98,7 @@ export const computeStyles = (
   keys.omit.forEach((key) => order.delete(key));
 
   const updated = pick(styles, keys.pick);
+  // console.log({ insertOrder, order, keys, styles, updated });
 
   const rulesInMedia = new Map<string, Array<StyleRuleWithProp>>(
     sortImplicitFirst ? [[symbols.noMedia, []]] : undefined
@@ -182,7 +186,10 @@ export const isRuleApplied = (
   return isRuleApplied(styleRule.parentRule, env);
 };
 
-export const sortRules = (rules: MatchedRule[], env: InspectResult["env"]) => {
+export const filterRulesByEnv = (
+  rules: MatchedRule[],
+  env: InspectResult["env"]
+) => {
   return Array.from(rules).filter((rule) => {
     if (!isRuleApplied(rule, env)) {
       return false;
