@@ -1,8 +1,5 @@
-import { IconButton } from "#components/icon-button";
-import * as Toast from "#components/toast";
 import * as TooltipPrimitive from "#components/tooltip";
 import { Collapsible, Editable, Portal } from "@ark-ui/react";
-import { createToaster } from "@ark-ui/react/toast";
 import {
   BugIcon,
   Eye,
@@ -10,12 +7,9 @@ import {
   LayersIcon,
   MonitorSmartphone,
   Undo2,
-  XIcon,
 } from "lucide-react";
 import {
   Dispatch,
-  Fragment,
-  PropsWithChildren,
   ReactNode,
   SetStateAction,
   useEffect,
@@ -36,6 +30,7 @@ import {
   styled,
 } from "../../styled-system/jsx";
 import { flex, hstack } from "../../styled-system/patterns";
+import { Tooltip } from "./components/tooltip";
 import { evaluator } from "./eval";
 import { InspectResult, MatchedStyleRule } from "./inspect-api";
 import { hypenateProperty } from "./lib/hyphenate-proprety";
@@ -46,6 +41,10 @@ import {
   filterRulesByEnv,
   symbols,
 } from "./lib/rules";
+import { unescapeString } from "./lib/unescape-string";
+import { useInspectedResult } from "./lib/use-inspect-result";
+import { useUndoRedo } from "./lib/use-undo-redo";
+import { useWindowSize } from "./lib/use-window-size";
 
 type Override = { value: string; computed: string | null };
 type OverrideMap = Record<string, Override | null>;
@@ -400,7 +399,6 @@ export function SidebarPane() {
         </Collapsible.Content>
       </Collapsible.Root>
 
-      <Toaster />
       <Stack pb="4" fontFamily="sans-serif">
         <Flex
           direction="column"
@@ -410,7 +408,7 @@ export function SidebarPane() {
           lineHeight="1.2"
           className="group"
         >
-          {/* TODO style */}
+          {/* TODO add inline style */}
           {inlineStyleKeys.length ? (
             <>
               <styled.div mt="4">
@@ -498,7 +496,6 @@ export function SidebarPane() {
             })
             .with(true, () => {
               if (groupByMedia) {
-                console.log(computed.rulesByLayerInMedia);
                 return (
                   <Stack>
                     {Array.from(computed.rulesByLayerInMedia.entries())
@@ -1020,165 +1017,3 @@ const EditableValue = (props: EditableValueProps) => {
     </Editable.Root>
   );
 };
-
-const useInspectedResult = () => {
-  const [result, setResult] = useState(null as InspectResult | null);
-
-  // Refresh on inspected element changed
-  useEffect(() => {
-    return evaluator.onSelectionChanged((update) => {
-      // console.log(update);
-      setResult(update);
-    });
-  }, []);
-
-  // Refresh on pane shown, maybe styles were updated in the official `Styles` devtools panel
-  useEffect(() => {
-    return evaluator.onPaneShown(async () => {
-      const update = await evaluator.inspectElement();
-      // console.log(update);
-
-      setResult(update ?? null);
-    });
-  }, []);
-
-  // Keep track of the location of the inspected element
-  const prevLocation = useRef(null as string | null);
-  useEffect(() => {
-    if (!result?.env.location) return;
-    prevLocation.current = result?.env.location;
-
-    const run = async () => {
-      const update = await evaluator.inspectElement();
-      setResult(update ?? null);
-    };
-    run();
-  }, [result?.env.location]);
-
-  return result;
-};
-
-const useWindowSize = () => {
-  const [windowSize, setWindowSize] = useState({} as InspectResult["env"]);
-
-  useEffect(() => {
-    return evaluator.onWindowResize((ev) => {
-      setWindowSize(ev);
-    });
-  }, []);
-
-  return windowSize;
-};
-
-const usePaneHidden = (cb: () => void) => {
-  useEffect(() => {
-    return evaluator.onPaneHidden(() => {
-      cb();
-    });
-  }, []);
-};
-
-const escapeRegex = /\\/g;
-const unescapeString = (str: string) => {
-  return str.replace(escapeRegex, "");
-};
-
-const [Toaster, toast] = createToaster({
-  placement: "top-end",
-  duration: 600,
-  max: 1,
-  pauseOnPageIdle: false,
-
-  render(toast) {
-    return (
-      <Toast.Root onClick={toast.dismiss} p="10px">
-        <Toast.Title fontSize="12px">{toast.title}</Toast.Title>
-        <Toast.Description>{toast.description}</Toast.Description>
-        <Toast.CloseTrigger asChild>
-          <IconButton size="sm" variant="link">
-            <XIcon />
-          </IconButton>
-        </Toast.CloseTrigger>
-      </Toast.Root>
-    );
-  },
-});
-
-interface TooltipProps extends PropsWithChildren<TooltipPrimitive.RootProps> {
-  content: ReactNode;
-  portalled?: boolean;
-}
-
-const Tooltip = (props: TooltipProps) => {
-  const { children, content, portalled = true, ...rest } = props;
-  const Portallish = portalled ? Portal : Fragment;
-
-  return (
-    <TooltipPrimitive.Root
-      openDelay={0}
-      closeDelay={0}
-      positioning={{ placement: "bottom" }}
-      lazyMount
-      {...rest}
-    >
-      <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
-      <Portallish>
-        <TooltipPrimitive.Positioner>
-          <TooltipPrimitive.Content
-            maxW="var(--available-width)"
-            animation="unset"
-            display="flex"
-            flexDirection="column"
-          >
-            {content}
-          </TooltipPrimitive.Content>
-        </TooltipPrimitive.Positioner>
-      </Portallish>
-    </TooltipPrimitive.Root>
-  );
-};
-
-function useUndoRedo<T>(initialState: T) {
-  const [state, setState] = useState<T>(initialState);
-  const historyRef = useRef<T[]>([initialState]);
-  const indexRef = useRef(0);
-
-  const setCurrentState = (newState: React.SetStateAction<T>) => {
-    const resolvedState =
-      typeof newState === "function" ? (newState as Function)(state) : newState;
-    const newHistory = historyRef.current.slice(0, indexRef.current + 1);
-    newHistory.push(resolvedState);
-
-    historyRef.current = newHistory;
-    indexRef.current += 1;
-    setState(resolvedState);
-  };
-
-  const undo = () => {
-    const newIndex = Math.max(indexRef.current - 1, 0);
-    if (newIndex !== indexRef.current) {
-      indexRef.current = newIndex;
-      setState(historyRef.current[newIndex]);
-    }
-  };
-
-  const redo = () => {
-    const newIndex = Math.min(
-      indexRef.current + 1,
-      historyRef.current.length - 1
-    );
-    if (newIndex !== indexRef.current) {
-      indexRef.current = newIndex;
-      setState(historyRef.current[newIndex]);
-    }
-  };
-
-  return {
-    state,
-    setState: setCurrentState,
-    undo,
-    redo,
-    canUndo: indexRef.current > 0,
-    canRedo: indexRef.current < historyRef.current.length - 1,
-  };
-}
