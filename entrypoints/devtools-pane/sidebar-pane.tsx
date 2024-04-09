@@ -18,6 +18,7 @@ import {
   ReactNode,
   SetStateAction,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -572,6 +573,7 @@ const Declaration = (props: DeclarationProps) => {
       prettySelector.startsWith(".") && !prettySelector.includes(" ");
 
     const [enabled, setEnabled] = useState(true);
+    const id = useId();
     // TODO update computed value when overriden
 
     return (
@@ -585,6 +587,7 @@ const Declaration = (props: DeclarationProps) => {
       >
         <styled.div display="flex" alignItems="center" mx="2">
           <input
+            id={id}
             type="checkbox"
             defaultChecked
             className={css({
@@ -609,11 +612,15 @@ const Declaration = (props: DeclarationProps) => {
               }
             }}
           />
-          {/* TODO editable */}
+          {/* TODO editable property */}
 
-          <styled.span className={css({ color: "rgb(92, 213, 251)" })}>
-            {prop}
-          </styled.span>
+          <styled.label
+            htmlFor={id}
+            pl="4px"
+            className={css({ color: "rgb(92, 213, 251)" })}
+          >
+            {hypenateProperty(prop)}
+          </styled.label>
           <styled.span mr="6px">:</styled.span>
           {isColor(computedValue) && (
             <styled.div
