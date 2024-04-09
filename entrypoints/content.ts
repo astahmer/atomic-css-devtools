@@ -23,27 +23,44 @@ export default defineContentScript({
       const rule = inspectApi.inspectElement(message.data.selector);
       return rule;
     });
+    onMessage("computePropertyValue", async (message) => {
+      return inspectApi.computePropertyValue(
+        message.data.selector,
+        message.data.prop
+      );
+    });
     onMessage("updateStyleRule", async (message) => {
+      let hasUpdated, computedValue;
       if (message.data.kind === "inlineStyle") {
         const element = document.querySelector(message.data.selector) as
           | HTMLElement
           | undefined;
-        if (!element) return;
+        if (!element) return { hasUpdated: false, computedValue: null };
 
-        return inspectApi.updateElementStyle(
+        hasUpdated = inspectApi.updateElementStyle(
           element,
+          message.data.prop,
+          message.data.value
+        );
+      } else {
+        hasUpdated = inspectApi.updateStyleRule(
+          message.data.selector,
           message.data.prop,
           message.data.value
         );
       }
 
-      const rule = inspectApi.updateStyleRule(
-        message.data.selector,
-        message.data.prop,
-        message.data.value
-      );
-      console.log(rule);
-      return rule;
+      if (hasUpdated) {
+        computedValue = inspectApi.computePropertyValue(
+          message.data.selector,
+          message.data.prop
+        );
+      }
+
+      return {
+        hasUpdated: Boolean(hasUpdated),
+        computedValue: computedValue ?? null,
+      };
     });
   },
 });

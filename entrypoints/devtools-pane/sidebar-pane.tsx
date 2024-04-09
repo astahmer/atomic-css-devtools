@@ -425,11 +425,18 @@ export function SidebarPane() {
                           source: symbols.inlineStyleSelector,
                         },
                         inspected,
-                        override: overrides?.["style-" + key] ?? null,
+                        override: overrides?.["style:" + key] ?? null,
+                        overrideComputedValue:
+                          overrides?.["style-override:" + key] ?? null,
                         setOverride: (value) =>
                           setOverrides((overrides) => ({
                             ...overrides,
-                            ["style-" + key]: value,
+                            ["style:" + key]: value,
+                          })),
+                        setOverrideComputedValue: (value) =>
+                          setOverrides((overrides) => ({
+                            ...overrides,
+                            ["style-override:" + key]: value,
                           })),
                       }}
                     />
@@ -479,10 +486,17 @@ export function SidebarPane() {
                     rule: computed.ruleByProp[key],
                     inspected,
                     override: overrides?.[key] ?? null,
+                    overrideComputedValue:
+                      overrides?.["override:" + key] ?? null,
                     setOverride: (value) =>
                       setOverrides((overrides) => ({
                         ...overrides,
                         [key]: value,
+                      })),
+                    setOverrideComputedValue: (value) =>
+                      setOverrides((overrides) => ({
+                        ...overrides,
+                        ["override:" + key]: value,
                       })),
                   }}
                 />
@@ -650,10 +664,16 @@ const DeclarationList = (props: DeclarationListProps) => {
           rule,
           inspected,
           override: overrides?.[prop] ?? null,
+          overrideComputedValue: overrides?.["override:" + prop] ?? null,
           setOverride: (value) =>
             setOverrides((overrides) => ({
               ...overrides,
               [prop]: value,
+            })),
+          setOverrideComputedValue: (value) =>
+            setOverrides((overrides) => ({
+              ...overrides,
+              ["override:" + prop]: value,
             })),
         }}
       />
@@ -661,14 +681,19 @@ const DeclarationList = (props: DeclarationListProps) => {
   });
 };
 
-interface DeclarationProps {
+interface DeclarationProps
+  extends Pick<
+    EditableValueProps,
+    | "override"
+    | "overrideComputedValue"
+    | "setOverride"
+    | "setOverrideComputedValue"
+  > {
   prop: string;
   index: number;
   matchValue: string;
   rule: MatchedStyleRule;
   inspected: InspectResult;
-  override: string | null;
-  setOverride: (value: string | null) => void;
 }
 
 const checkboxStyles = css.raw({
@@ -683,11 +708,22 @@ const checkbox = css(checkboxStyles);
 
 const Declaration = (props: DeclarationProps) => {
   {
-    const { prop, index, matchValue, rule, inspected, override, setOverride } =
-      props;
+    const {
+      prop,
+      index,
+      matchValue,
+      rule,
+      inspected,
+      override,
+      overrideComputedValue,
+      setOverride,
+      setOverrideComputedValue,
+    } = props;
 
     const computedValue =
-      inspected.computedStyle[prop] || inspected.cssVars[matchValue];
+      overrideComputedValue ||
+      inspected.computedStyle[prop] ||
+      inspected.cssVars[matchValue];
 
     const prettySelector = unescapeString(rule.selector);
     const isTogglableClass =
@@ -760,7 +796,9 @@ const Declaration = (props: DeclarationProps) => {
             selector={rule.selector}
             matchValue={matchValue}
             override={override}
+            overrideComputedValue={overrideComputedValue}
             setOverride={setOverride}
+            setOverrideComputedValue={setOverrideComputedValue}
           />
           {matchValue.startsWith("var(--") && computedValue && (
             <TooltipPrimitive.Root
@@ -905,12 +943,21 @@ interface EditableValueProps {
   selector: string;
   matchValue: string;
   override: string | null;
+  overrideComputedValue: string | null;
   setOverride: (value: string | null) => void;
+  setOverrideComputedValue: (value: string | null) => void;
 }
 
 const EditableValue = (props: EditableValueProps) => {
-  const { elementSelector, prop, selector, matchValue, override, setOverride } =
-    props;
+  const {
+    elementSelector,
+    prop,
+    selector,
+    matchValue,
+    override,
+    setOverride,
+    setOverrideComputedValue,
+  } = props;
 
   // TODO cmd+z undo/redo
   // TODO btn to revert to default
@@ -942,9 +989,12 @@ const EditableValue = (props: EditableValueProps) => {
       onValueCommit={async (update) => {
         if (!update.value || update.value === propValue) return;
 
-        const hasUpdated = await updateValue(update.value);
+        const { hasUpdated, computedValue } = await updateValue(update.value);
         if (hasUpdated) {
           setOverride(update.value);
+          if (computedValue != null) {
+            setOverrideComputedValue(computedValue);
+          }
         }
       }}
     >
@@ -991,6 +1041,7 @@ const EditableValue = (props: EditableValueProps) => {
               const hasUpdated = await updateValue(matchValue);
               if (hasUpdated) {
                 setOverride(null);
+                setOverrideComputedValue(null);
               }
             }}
           />

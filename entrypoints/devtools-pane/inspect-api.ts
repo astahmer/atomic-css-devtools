@@ -186,6 +186,14 @@ class InspectAPI {
     }
   }
 
+  computePropertyValue(selector: string, prop: string) {
+    const element = document.querySelector(selector);
+    if (!element) return;
+
+    const computed = getComputedStyle(element);
+    return computed.getPropertyValue(prop);
+  }
+
   updateStyleRule(selector: string, prop: string, value: string) {
     const styleRule = this.findStyleRule(selector);
     if (styleRule) {
@@ -193,6 +201,7 @@ class InspectAPI {
       return true;
     }
   }
+
   updateElementStyle(element: HTMLElement, prop: string, value: string) {
     if (element) {
       element.style.setProperty(prop, value);
