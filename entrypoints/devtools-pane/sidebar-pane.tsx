@@ -50,7 +50,7 @@ export function SidebarPane() {
   const inspected = useInspectedResult();
   const size = useWindowSize();
 
-  const filtered = useMemo(
+  const rulesMatchingEnv = useMemo(
     () =>
       inspected
         ? filterRulesByEnv(inspected.rules, { ...inspected.env, ...size })
@@ -58,25 +58,36 @@ export function SidebarPane() {
     [inspected, size]
   );
 
-  const computed = computeStyles(filtered, {
-    layersOrder: inspected?.layersOrder.flat(),
-  });
-  // const { styles, order, ruleByProp, symbols } = computed;
   const [overrides, setOverrides] = useState(
     null as Record<string, string | null> | null
   );
 
   const [groupByLayer, setGroupByLayer] = useState(false);
   const [groupByMedia, setGroupByMedia] = useState(false);
-  const [visibleLayers, setVisibleLayers] = useState<string[]>([]);
+  const [visibleLayersState, setVisibleLayers] = useState<string[]>([]);
+  const [filter, setFilter] = useState("");
 
+  // Add platform class to apply targeted styles
   useEffect(() => {
     browser.runtime.getPlatformInfo().then((info) => {
       document.body.classList.add("platform-" + info.os);
     });
   }, []);
 
-  // console.log({ groupByMedia, groupByLayer, visibleLayers }, computed);
+  const computed = computeStyles(rulesMatchingEnv, {
+    filter,
+  });
+
+  // In case the visible layers somehow contain a layer that is not in the inspected document
+  // Ignore it
+  const visibleLayers = useMemo(() => {
+    if (!inspected?.layersOrder) return [];
+    return visibleLayersState.filter(
+      (layer) =>
+        inspected.layersOrder.includes(layer) ||
+        layer === symbols.implicitOuterLayer
+    );
+  }, [inspected?.layersOrder, visibleLayersState]);
 
   if (!inspected) {
     return (
@@ -88,9 +99,9 @@ export function SidebarPane() {
     );
   }
 
-  // TODO filter
+  // TODO toggle show source (next to layer/media)
   // TODO toggle btn to remove selectors with `*`
-  // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
+  // TODO highlight things matching filter + part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
   // TODO CSS vars
   // TODO only atomic (filter out rules with more than 1 declaration)
   // TODO light mode
@@ -119,89 +130,85 @@ export function SidebarPane() {
           transform: "translateY(-3px)",
           overflow: "hidden",
           zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          px: "2px",
         })}
       >
-        <Flex direction="column" px="2px">
-          <Flex ml="auto" alignItems="center" position="relative" zIndex="2">
-            <Tooltip content="Log inspected element">
+        <Flex alignItems="center" position="relative" zIndex="2">
+          <styled.input
+            placeholder="Filter"
+            flex="1"
+            overflow="hidden"
+            whiteSpace="nowrap"
+            backgroundColor="var(--sys-color-state-hover-on-subtle, rgb(40, 40, 40))"
+            border="1px solid var(--sys-color-neutral-outline, rgb(117, 117, 117))"
+            h="19px"
+            padding="4px 3px 3px"
+            borderRadius="4px"
+            css={{
+              color: "var(--sys-color-on-surface, #e3e3e3)",
+              _placeholder: {
+                color: "var(--sys-color-token-subtle, rgb(143, 143, 143))",
+              },
+              "&:hover:not(:focus)": {
+                backgroundColor:
+                  "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
+              },
+              _focusVisible: {
+                outline: "1px solid rgb(153, 200, 255)",
+                border: "1px solid transparent",
+                outlineColor: "rgb(153, 200, 255)",
+              },
+            }}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+          <Tooltip content="Log inspected element">
+            <styled.button
+              ml="auto"
+              className="group"
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              px="4px"
+              height="26px"
+              minWidth="28px"
+              _hover={{
+                backgroundColor:
+                  "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+              }}
+              _selected={{
+                backgroundColor:
+                  "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+                color: "var(--icon-toggled, rgb(124, 172, 248))",
+              }}
+              onClick={() =>
+                console.log(
+                  inspected,
+                  { groupByMedia, groupByLayer, visibleLayers },
+                  computed
+                )
+              }
+            >
+              <BugIcon
+                className={css({
+                  w: "16px",
+                  h: "16px",
+                  opacity: { base: 0.8, _groupHover: 1 },
+                })}
+              />
+            </styled.button>
+          </Tooltip>
+          <Tooltip content="Group elements by @layer">
+            <Collapsible.Trigger asChild>
               <styled.button
+                aria-selected={groupByLayer}
                 className="group"
                 display="flex"
                 justifyContent="center"
                 alignItems="center"
                 px="4px"
-                height="26px"
-                minWidth="28px"
-                _hover={{
-                  backgroundColor:
-                    "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-                }}
-                _selected={{
-                  backgroundColor:
-                    "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-                  color: "var(--icon-toggled, rgb(124, 172, 248))",
-                }}
-                onClick={() => console.log(inspected)}
-              >
-                <BugIcon
-                  className={css({
-                    w: "16px",
-                    h: "16px",
-                    opacity: { base: 0.8, _groupHover: 1 },
-                  })}
-                />
-              </styled.button>
-            </Tooltip>
-            <Tooltip content="Group elements by @layer">
-              <Collapsible.Trigger asChild>
-                <styled.button
-                  aria-selected={groupByLayer}
-                  className="group"
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  px="4px"
-                  height="26px"
-                  minWidth="28px"
-                  _hover={{
-                    backgroundColor:
-                      "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-                  }}
-                  _selected={{
-                    backgroundColor:
-                      "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-                    color: "var(--icon-toggled, rgb(124, 172, 248))",
-                  }}
-                  onClick={() => {
-                    const update = !groupByLayer;
-                    if (update) {
-                      setVisibleLayers(
-                        Array.from(computed.rulesByLayer.keys())
-                      );
-                    }
-
-                    setGroupByLayer(update);
-                  }}
-                >
-                  <LayersIcon
-                    className={css({
-                      w: "16px",
-                      h: "16px",
-                      opacity: { base: 0.8, _groupHover: 1 },
-                    })}
-                  />
-                </styled.button>
-              </Collapsible.Trigger>
-            </Tooltip>
-            <Tooltip content="Group elements by @media">
-              <styled.button
-                aria-selected={groupByMedia}
-                className="group"
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-                px="4px"
-                mr="2px"
                 height="26px"
                 minWidth="28px"
                 _hover={{
@@ -214,10 +221,15 @@ export function SidebarPane() {
                   color: "var(--icon-toggled, rgb(124, 172, 248))",
                 }}
                 onClick={() => {
-                  setGroupByMedia((current) => !current);
+                  const update = !groupByLayer;
+                  if (update) {
+                    setVisibleLayers(Array.from(computed.rulesByLayer.keys()));
+                  }
+
+                  setGroupByLayer(update);
                 }}
               >
-                <MonitorSmartphone
+                <LayersIcon
                   className={css({
                     w: "16px",
                     h: "16px",
@@ -225,80 +237,124 @@ export function SidebarPane() {
                   })}
                 />
               </styled.button>
-            </Tooltip>
-          </Flex>
-          <Collapsible.Content>
-            {/* var(--color-text-secondary) */}
-            <styled.div mt="-20px" mb="6px" fontSize="12px" color="#9aa0a6">
-              Toggle layer visibility
-            </styled.div>
-            <Wrap gap="2" alignItems="center" mb="2px">
-              {Array.from(computed.rulesByLayer.keys()).map((layer) => {
-                return (
-                  <HStack gap="2px" alignItems="center" key={layer}>
-                    <input
-                      key={layer}
-                      type="checkbox"
-                      name="layers"
-                      id={"layer-" + layer}
-                      value={layer}
-                      className={checkbox}
-                      checked={visibleLayers.includes(layer)}
-                      onChange={(e) =>
-                        setVisibleLayers(
-                          e.target.checked
-                            ? [...visibleLayers, layer]
-                            : visibleLayers.filter((l) => l !== layer)
-                        )
-                      }
-                    />
-                    <label htmlFor={"layer-" + layer}>
-                      {layer}
-                      {""}({computed.rulesByLayer.get(layer)?.length})
-                    </label>
-                  </HStack>
-                );
-              })}
-              {visibleLayers.length === 0 ? (
-                <button
-                  className={cx(
-                    "group",
-                    hstack({ gap: "4px", cursor: "pointer" })
-                  )}
-                  onClick={() =>
-                    setVisibleLayers(Array.from(computed.rulesByLayer.keys()))
-                  }
-                >
-                  <Eye
-                    className={css({
-                      w: "12px",
-                      h: "12px",
-                      opacity: { base: 0.5, _groupHover: 1 },
-                    })}
-                  />{" "}
-                  Show all
-                </button>
-              ) : (
-                <button
-                  className={cx(
-                    "group",
-                    hstack({ gap: "4px", cursor: "pointer" })
-                  )}
-                  onClick={() => setVisibleLayers([])}
-                >
-                  <EyeOffIcon
-                    className={css({
-                      w: "12px",
-                      h: "12px",
-                      opacity: { base: 0.5, _groupHover: 1 },
-                    })}
-                  />{" "}
-                  Hide all
-                </button>
-              )}
-            </Wrap>
-          </Collapsible.Content>
+            </Collapsible.Trigger>
+          </Tooltip>
+          <Tooltip content="Group elements by @media">
+            <styled.button
+              aria-selected={groupByMedia}
+              className="group"
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              px="4px"
+              mr="2px"
+              height="26px"
+              minWidth="28px"
+              _hover={{
+                backgroundColor:
+                  "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+              }}
+              _selected={{
+                backgroundColor:
+                  "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+                color: "var(--icon-toggled, rgb(124, 172, 248))",
+              }}
+              onClick={() => {
+                setGroupByMedia((current) => !current);
+              }}
+            >
+              <MonitorSmartphone
+                className={css({
+                  w: "16px",
+                  h: "16px",
+                  opacity: { base: 0.8, _groupHover: 1 },
+                })}
+              />
+            </styled.button>
+          </Tooltip>
         </Flex>
+        <Collapsible.Content>
+          {/* var(--color-text-secondary) */}
+          <styled.div mt="-20px" mb="6px" fontSize="12px" color="#9aa0a6">
+            Toggle layer visibility
+          </styled.div>
+          <Wrap gap="2" alignItems="center" mb="2px">
+            {Array.from(computed.rulesByLayer.keys()).map((layer) => {
+              return (
+                <HStack gap="2px" alignItems="center" key={layer}>
+                  <input
+                    key={layer}
+                    type="checkbox"
+                    name="layers"
+                    id={"layer-" + layer}
+                    value={layer}
+                    className={checkbox}
+                    checked={visibleLayersState.includes(layer)}
+                    disabled={
+                      visibleLayers.length === 1 &&
+                      layer === symbols.implicitOuterLayer
+                    }
+                    onChange={(e) =>
+                      setVisibleLayers(
+                        e.target.checked
+                          ? [...visibleLayers, layer]
+                          : visibleLayers.filter((l) => l !== layer)
+                      )
+                    }
+                  />
+                  <label htmlFor={"layer-" + layer}>
+                    {layer}
+                    {""}({computed.rulesByLayer.get(layer)?.length})
+                  </label>
+                </HStack>
+              );
+            })}
+            {visibleLayers.length === 0 ? (
+              <button
+                className={cx(
+                  "group",
+                  hstack({ gap: "4px", cursor: "pointer" })
+                )}
+                onClick={() =>
+                  setVisibleLayers(Array.from(computed.rulesByLayer.keys()))
+                }
+              >
+                <Eye
+                  className={css({
+                    w: "12px",
+                    h: "12px",
+                    opacity: { base: 0.5, _groupHover: 1 },
+                  })}
+                />{" "}
+                Show all
+              </button>
+            ) : (
+              <button
+                className={cx(
+                  visibleLayers.length === 1 &&
+                    visibleLayers[0]! === symbols.implicitOuterLayer
+                    ? undefined
+                    : "group",
+                  hstack({ gap: "4px", cursor: "pointer" })
+                )}
+                onClick={() => setVisibleLayers([])}
+                disabled={
+                  visibleLayers.length === 1 &&
+                  visibleLayers[0]! === symbols.implicitOuterLayer
+                }
+              >
+                <EyeOffIcon
+                  className={css({
+                    w: "12px",
+                    h: "12px",
+                    opacity: { base: 0.5, _groupHover: 1 },
+                  })}
+                />{" "}
+                Hide all
+              </button>
+            )}
+          </Wrap>
+        </Collapsible.Content>
       </Collapsible.Root>
 
       <Toaster />
@@ -310,7 +366,6 @@ export function SidebarPane() {
           fontSize="11px"
           lineHeight="1.2"
           className="group"
-          pt="2"
         >
           {/* TODO style */}
           {inlineStyleKeys.length ? (
@@ -503,7 +558,8 @@ const DeclarationGroup = (props: DeclarationGroupProps) => {
             _hover={{
               backgroundColor: "rgba(253, 252, 251, 0.1)",
             }}
-            ml="6px"
+            ml="3px"
+            mb="3px"
           >
             <span
               className={css({
@@ -514,7 +570,6 @@ const DeclarationGroup = (props: DeclarationGroupProps) => {
                     ".group-btn[aria-expanded=true] &": "'▼'",
                   },
                 },
-                mr: "2px",
                 w: "12px",
                 h: "12px",
                 cursor: "pointer",
@@ -614,7 +669,7 @@ const Declaration = (props: DeclarationProps) => {
         _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
         textDecoration={enabled ? "none" : "line-through !important"}
       >
-        <styled.div display="flex" alignItems="flex-start" mx="2">
+        <styled.div display="flex" alignItems="flex-start" mr="2">
           <input
             id={id}
             type="checkbox"
@@ -775,6 +830,7 @@ const Declaration = (props: DeclarationProps) => {
                   </styled.span>
                   {rule.media && <styled.span ml="2">{"}"}</styled.span>}
                   {rule.layer && <span>{"}"}</span>}
+                  <styled.span mt="4">{rule.source}</styled.span>
                 </>
               }
             >

@@ -1,10 +1,12 @@
-import type { InspectResult, MatchedStyleRule } from "../inspect-api";
 import type {
+  InspectResult,
   MatchedLayerBlockRule,
   MatchedMediaRule,
   MatchedRule,
+  MatchedStyleRule,
 } from "../inspect-api";
 
+import { hypenateProperty } from "@pandacss/shared";
 import { compileQuery, matches } from "media-query-fns";
 import {
   longhands,
@@ -62,7 +64,7 @@ export interface StyleRuleWithProp extends MatchedStyleRule {
 
 interface ComputeStylesOptions {
   sortImplicitFirst?: boolean;
-  layersOrder?: string[];
+  filter?: string;
 }
 
 /**
@@ -75,11 +77,27 @@ export const computeStyles = (
   rules: MatchedRule[],
   options: ComputeStylesOptions = {}
 ) => {
-  const { sortImplicitFirst = false, layersOrder } = options;
+  const { sortImplicitFirst = false, filter } = options;
 
-  const ruleByProp = {} as Record<string, StyleRuleWithProp>;
-  const styles = {} as Record<string, string>;
+  const appliedRuleOrProp = {} as Record<string, StyleRuleWithProp>;
+  const appliedStyles = {} as Record<string, string>;
   const insertOrder = [] as string[];
+
+  const visibleRuleByProp = {} as Record<string, StyleRuleWithProp>;
+  const visibleStyles = {} as Record<string, string>;
+
+  let search = "";
+  let mediaFilter = "";
+  let layerFilter = "";
+  if (filter) {
+    if (filter.startsWith("@media ")) {
+      mediaFilter = filter.slice("@media ".length).toLowerCase();
+    } else if (filter.startsWith("@layer ")) {
+      layerFilter = filter.slice("@layer ".length).toLowerCase();
+    } else {
+      search = filter.toLowerCase();
+    }
+  }
 
   // console.log(rules);
   rules.forEach((rule) => {
@@ -87,24 +105,53 @@ export const computeStyles = (
 
     Object.keys(rule.style).forEach((key) => {
       insertOrder.push(key);
-      styles[key] = rule.style[key];
+      appliedStyles[key] = rule.style[key];
       // console.log({ rule: rule.selector, key, value: rule.style[key] });
-      ruleByProp[key] = { ...rule, prop: key };
+      appliedRuleOrProp[key] = { ...rule, prop: key };
     });
   });
 
+  Object.keys(appliedRuleOrProp).forEach((key) => {
+    const rule = appliedRuleOrProp[key];
+    const value = rule.style[key];
+    const prop = key.toLocaleLowerCase();
+    const dashedProp = hypenateProperty(key);
+
+    if (
+      search &&
+      !Boolean(
+        prop.includes(search) ||
+          dashedProp.includes(search) ||
+          value.includes(search) ||
+          rule.selector.includes(search) ||
+          rule.source.includes(search)
+      )
+    ) {
+      return;
+    }
+    if (mediaFilter && !rule.media?.includes(mediaFilter)) return;
+    if (layerFilter && !rule.layer?.includes(layerFilter)) return;
+
+    visibleStyles[key] = rule.style[key];
+    visibleRuleByProp[key] = rule;
+  });
+
   const order = new Set(Array.from(insertOrder).reverse());
-  const keys = compactCSS(styles);
+  order.forEach((prop) => {
+    if (!visibleRuleByProp[prop]) order.delete(prop);
+  });
+
+  const keys = compactCSS(appliedStyles);
   keys.omit.forEach((key) => order.delete(key));
 
-  const updated = pick(styles, keys.pick);
+  const updated = pick(visibleStyles, keys.pick);
   // console.log({ insertOrder, order, keys, styles, updated });
 
   const rulesInMedia = new Map<string, Array<StyleRuleWithProp>>(
     sortImplicitFirst ? [[symbols.noMedia, []]] : undefined
   );
   order.forEach((prop) => {
-    const rule = ruleByProp[prop];
+    const rule = visibleRuleByProp[prop];
     if (!rule) return;
 
     const media = rule.media || symbols.noMedia;
@@ -115,7 +162,7 @@ export const computeStyles = (
     sortImplicitFirst ? [[symbols.implicitOuterLayer, []]] : undefined
   );
   order.forEach((prop) => {
-    const rule = ruleByProp[prop];
+    const rule = visibleRuleByProp[prop];
     if (!rule) return;
 
     const layer = rule.layer || symbols.implicitOuterLayer;
@@ -131,7 +178,7 @@ export const computeStyles = (
       : undefined
   );
   order.forEach((prop) => {
-    const rule = ruleByProp[prop];
+    const rule = visibleRuleByProp[prop];
     if (!rule) return;
 
     const layer = rule.layer || symbols.implicitOuterLayer;
@@ -144,9 +191,16 @@ export const computeStyles = (
     rulesByLayerInMedia.set(layer, { ...currentLayer, [media]: currentMedia });
   });
 
+  // console.log({
+  //   appliedRuleOrProp,
+  //   appliedStyles,
+  //   visibleStyles,
+  //   visibleRuleByProp,
+  // });
+
   return {
     styles: updated,
-    ruleByProp,
+    ruleByProp: visibleRuleByProp,
     order,
     rulesInMedia,
     rulesByLayer,
