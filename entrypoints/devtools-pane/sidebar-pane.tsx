@@ -586,9 +586,6 @@ const checkboxStyles = css.raw({
   px: "4px",
   accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
   color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
-  "& + label": {
-    pl: "2px",
-  },
 });
 const checkbox = css(checkboxStyles);
 
