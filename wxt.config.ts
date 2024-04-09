@@ -18,5 +18,6 @@ export default defineConfig({
       name: "@astahmer_dev",
       url: "https://twitter.com/astahmer_dev",
     },
+    permissions: [],
   },
 });
