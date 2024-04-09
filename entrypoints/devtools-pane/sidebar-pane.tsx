@@ -617,7 +617,7 @@ const Declaration = (props: DeclarationProps) => {
         _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
         textDecoration={enabled ? "none" : "line-through !important"}
       >
-        <styled.div display="flex" alignItems="center" mx="2">
+        <styled.div display="flex" alignItems="flex-start" mx="2">
           <input
             id={id}
             type="checkbox"
@@ -650,6 +650,7 @@ const Declaration = (props: DeclarationProps) => {
             htmlFor={id}
             pl="4px"
             className={css({ color: "rgb(92, 213, 251)" })}
+            whiteSpace="nowrap"
           >
             {hypenateProperty(prop)}
           </styled.label>
@@ -877,7 +878,7 @@ const EditableValue = (props: EditableValueProps) => {
             },
           })}
         />
-        <Editable.Preview />
+        <Editable.Preview className={css({ whiteSpace: "normal!" })} />
       </Editable.Area>
       {override !== null && (
         <Tooltip
