@@ -80,6 +80,7 @@ class InspectAPI {
 
   getWindowEnv(): WindowEnv {
     return {
+      location: window.location.href,
       widthPx: window.innerWidth,
       heightPx: window.innerHeight,
       deviceWidthPx: window.screen.width,
@@ -413,6 +414,7 @@ export type MatchedRule =
   | MatchedLayerBlockRule;
 
 export interface WindowEnv {
+  location: string;
   widthPx: number;
   heightPx: number;
   deviceWidthPx: number;

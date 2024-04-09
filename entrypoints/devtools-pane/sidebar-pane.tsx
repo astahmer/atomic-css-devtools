@@ -79,15 +79,38 @@ export function SidebarPane() {
   });
 
   // In case the visible layers somehow contain a layer that is not in the inspected document
-  // Ignore it
+  // (most likely after visiting a different website) -> Ignore it
+  // always fallback to showing the implicit layer
   const visibleLayers = useMemo(() => {
-    if (!inspected?.layersOrder) return [];
-    return visibleLayersState.filter(
-      (layer) =>
-        inspected.layersOrder.includes(layer) ||
-        layer === symbols.implicitOuterLayer
+    if (!inspected?.layersOrder) return [symbols.implicitOuterLayer];
+
+    const filtered = visibleLayersState.filter((layer) =>
+      inspected.layersOrder.includes(layer)
     );
+
+    return filtered.length > 0 ? filtered : [symbols.implicitOuterLayer];
   }, [inspected?.layersOrder, visibleLayersState]);
+  const availableLayers = useMemo(
+    () => Array.from(computed.rulesByLayer.keys()),
+    [computed.rulesByLayer]
+  );
+
+  // Reset visible layers when visiting a different website that have different @layers
+  const prevLocation = useRef(null as string | null);
+  useEffect(() => {
+    if (!inspected?.env.location) return;
+    prevLocation.current = inspected?.env.location;
+  }, [inspected?.env.location]);
+
+  useEffect(() => {
+    if (
+      prevLocation.current &&
+      prevLocation.current !== inspected?.env.location &&
+      availableLayers.length
+    ) {
+      setVisibleLayers(availableLayers);
+    }
+  }, [inspected?.env.location, visibleLayers.length, inspected?.layersOrder]);
 
   if (!inspected) {
     return (
@@ -122,6 +145,7 @@ export function SidebarPane() {
   return (
     <>
       <Collapsible.Root
+        open={groupByLayer || groupByMedia}
         className={css({
           borderBottom: "1px solid #474747ff", // border-neutral-30
           position: "sticky",
@@ -186,7 +210,12 @@ export function SidebarPane() {
               onClick={() =>
                 console.log(
                   inspected,
-                  { groupByMedia, groupByLayer, visibleLayers },
+                  {
+                    groupByMedia,
+                    groupByLayer,
+                    visibleLayers,
+                    visibleLayersState,
+                  },
                   computed
                 )
               }
@@ -335,7 +364,14 @@ export function SidebarPane() {
                     visibleLayers[0]! === symbols.implicitOuterLayer
                     ? undefined
                     : "group",
-                  hstack({ gap: "4px", cursor: "pointer" })
+                  hstack({
+                    gap: "4px",
+                    cursor:
+                      visibleLayers.length === 1 &&
+                      visibleLayers[0]! === symbols.implicitOuterLayer
+                        ? undefined
+                        : "pointer",
+                  })
                 )}
                 onClick={() => setVisibleLayers([])}
                 disabled={
@@ -454,6 +490,7 @@ export function SidebarPane() {
             })
             .with(true, () => {
               if (groupByMedia) {
+                console.log(computed.rulesByLayerInMedia);
                 return (
                   <Stack>
                     {Array.from(computed.rulesByLayerInMedia.entries())
@@ -825,7 +862,7 @@ const Declaration = (props: DeclarationProps) => {
                       @media {rule.media} {"{\n\n"}{" "}
                     </styled.span>
                   )}
-                  <styled.span ml={rule.media ? "4" : "2"}>
+                  <styled.span ml={rule.media || rule.layer ? "4" : "0"}>
                     {prettySelector}
                   </styled.span>
                   {rule.media && <styled.span ml="2">{"}"}</styled.span>}
@@ -983,6 +1020,19 @@ const useInspectedResult = () => {
       setResult(update ?? null);
     });
   }, []);
+
+  // Keep track of the location of the inspected element
+  const prevLocation = useRef(null as string | null);
+  useEffect(() => {
+    if (!result?.env.location) return;
+    prevLocation.current = result?.env.location;
+
+    const run = async () => {
+      const update = await evaluator.inspectElement();
+      setResult(update ?? null);
+    };
+    run();
+  }, [result?.env.location]);
 
   return result;
 };

@@ -4,10 +4,11 @@ import { WindowEnv, inspectApi } from "./devtools-pane/inspect-api";
 export default defineContentScript({
   matches: ["<all_urls>"],
   main(_ctx) {
-    console.log("Started content.ts");
+    import.meta.env.DEV && console.log("Started content.ts");
 
     window.addEventListener("resize", async function () {
       const env: WindowEnv = {
+        location: window.location.href,
         widthPx: window.innerWidth,
         heightPx: window.innerHeight,
         deviceWidthPx: window.screen.width,
