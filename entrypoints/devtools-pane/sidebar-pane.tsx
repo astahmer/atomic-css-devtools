@@ -102,11 +102,11 @@ export function SidebarPane() {
   const visibleLayers = useMemo(() => {
     if (!inspected?.layersOrder) return [symbols.implicitOuterLayer];
 
-    const filtered = visibleLayersState.filter((layer) =>
+    const visible = visibleLayersState.filter((layer) =>
       inspected.layersOrder.includes(layer)
     );
 
-    return filtered.length > 0 ? filtered : [symbols.implicitOuterLayer];
+    return visible.length > 0 ? visible : [symbols.implicitOuterLayer];
   }, [inspected?.layersOrder, visibleLayersState]);
   const availableLayers = useMemo(
     () => Array.from(computed.rulesByLayer.keys()),
@@ -160,13 +160,15 @@ export function SidebarPane() {
 
   const inlineStyleKeys = Object.keys(inspected.style);
   const hasMatches = computed.order.size > 0 && inlineStyleKeys.length > 0;
+  const hasNoLayers =
+    visibleLayers.length === 1 &&
+    visibleLayers[0]! === symbols.implicitOuterLayer;
 
   return (
     <FilterContext.Provider value={filter}>
       <Collapsible.Root
         open={groupByLayer || groupByMedia}
         className={css({
-          borderBottom: "1px solid #474747ff", // border-neutral-30
           position: "sticky",
           backgroundColor: "#282828", // neutral-15
           top: "0",
@@ -405,24 +407,15 @@ export function SidebarPane() {
             ) : (
               <button
                 className={cx(
-                  visibleLayers.length === 1 &&
-                    visibleLayers[0]! === symbols.implicitOuterLayer
-                    ? undefined
-                    : "group",
+                  hasNoLayers ? undefined : "group",
                   hstack({
                     gap: "4px",
-                    cursor:
-                      visibleLayers.length === 1 &&
-                      visibleLayers[0]! === symbols.implicitOuterLayer
-                        ? undefined
-                        : "pointer",
+                    cursor: hasNoLayers ? undefined : "pointer",
+                    opacity: hasNoLayers ? "0.5" : undefined,
                   })
                 )}
-                onClick={() => setVisibleLayers([])}
-                disabled={
-                  visibleLayers.length === 1 &&
-                  visibleLayers[0]! === symbols.implicitOuterLayer
-                }
+                onClick={() => setVisibleLayers([symbols.implicitOuterLayer])}
+                disabled={hasNoLayers}
               >
                 <EyeOffIcon
                   className={css({
