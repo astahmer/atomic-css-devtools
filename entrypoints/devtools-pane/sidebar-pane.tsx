@@ -157,6 +157,7 @@ export function SidebarPane() {
   // TODO collapse/expand all
   // TODO blue highlight for every elements matching the hovered selector
   // TODO save preferences in idb ?
+  // TODO copy raw value on click sur computed value hint
 
   const inlineStyleKeys = Object.keys(inspected.style);
   const hasMatches = computed.order.size > 0 && inlineStyleKeys.length > 0;
@@ -173,6 +174,7 @@ export function SidebarPane() {
           backgroundColor: "#282828", // neutral-15
           top: "0",
           transform: "translateY(-3px)",
+          marginTop: "-3px",
           overflow: "hidden",
           zIndex: 1,
           display: "flex",
@@ -431,8 +433,8 @@ export function SidebarPane() {
         </Collapsible.Content>
       </Collapsible.Root>
 
-      {/* border-neutral-30 */}
-      <Stack py="4px" fontFamily="sans-serif" borderTop="1px solid #474747ff">
+      <styled.hr opacity="0.2" />
+      <Stack py="2px" fontFamily="sans-serif">
         <Flex
           direction="column"
           textStyle="sm"
@@ -441,43 +443,66 @@ export function SidebarPane() {
           lineHeight="1.2"
           className="group"
         >
-          {/* TODO add inline style */}
-          {inlineStyleKeys.length ? (
-            <>
-              <styled.div>
-                {inlineStyleKeys.map((key, index) => {
-                  const value = inspected.style[key] as string;
+          <Flex direction="column" gap="2px" px="4px">
+            <Flex alignItems="center">
+              <styled.span
+                fontWeight="500"
+                color="var(--sys-color-state-disabled, rgba(227, 227, 227, 0.38))"
+                mr="6px"
+              >
+                element.style
+              </styled.span>
+              <styled.span
+                fontWeight="600"
+                color="var(--sys-color-on-surface, rgb(227, 227, 227))"
+              >
+                {"{"}
+              </styled.span>
+            </Flex>
+            {/* TODO toggle inline style */}
+            {inlineStyleKeys.length ? (
+              <>
+                <styled.div>
+                  {inlineStyleKeys.map((key, index) => {
+                    const value = inspected.style[key] as string;
 
-                  return (
-                    <Declaration
-                      {...{
-                        key,
-                        index,
-                        prop: key,
-                        matchValue: value,
-                        rule: {
-                          type: "style",
-                          selector: symbols.inlineStyleSelector,
-                          style: { [key]: value },
-                          parentRule: null,
-                          source: symbols.inlineStyleSelector,
-                        },
-                        inspected,
-                        override: overrides?.["style:" + key] ?? null,
-                        setOverride: (value, computed) =>
-                          setOverrides((overrides) => ({
-                            ...overrides,
-                            ["style:" + key]:
-                              value != null ? { value, computed } : null,
-                          })),
-                      }}
-                    />
-                  );
-                })}
-              </styled.div>
-              <styled.hr my="1" opacity="0.2" />
-            </>
-          ) : null}
+                    return (
+                      <Declaration
+                        {...{
+                          key,
+                          index,
+                          prop: key,
+                          matchValue: value,
+                          rule: {
+                            type: "style",
+                            selector: symbols.inlineStyleSelector,
+                            style: { [key]: value },
+                            parentRule: null,
+                            source: symbols.inlineStyleSelector,
+                          },
+                          inspected,
+                          override: overrides?.["style:" + key] ?? null,
+                          setOverride: (value, computed) =>
+                            setOverrides((overrides) => ({
+                              ...overrides,
+                              ["style:" + key]:
+                                value != null ? { value, computed } : null,
+                            })),
+                        }}
+                      />
+                    );
+                  })}
+                </styled.div>
+              </>
+            ) : null}
+            <styled.span
+              fontWeight="600"
+              color="var(--sys-color-on-surface, rgb(227, 227, 227))"
+            >
+              {"}"}
+            </styled.span>
+            <styled.hr my="1" opacity="0.2" />
+          </Flex>
           {match(groupByLayer)
             .with(false, () => {
               if (groupByMedia) {
@@ -806,11 +831,12 @@ const Declaration = (props: DeclarationProps) => {
         <styled.span mr="6px">:</styled.span>
         {isColor(computedValue) && (
           <styled.div
+            alignSelf="center"
             display="inline-block"
-            border="1px solid #757575"
-            width="12px"
-            height="12px"
-            mr="4px"
+            border="1px solid var(--sys-color-neutral-outline, #757575)"
+            width="9.6px"
+            height="9.6px"
+            mx="4px"
             style={{ backgroundColor: computedValue }}
           />
         )}
