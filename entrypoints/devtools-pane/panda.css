@@ -8,7 +8,7 @@ body,
 
 html {
   overflow: hidden;
-  padding: 3px;
+  padding: 3px 0;
 }
 
 #root {

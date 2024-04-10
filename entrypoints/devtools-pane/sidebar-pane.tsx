@@ -1,5 +1,11 @@
 import * as TooltipPrimitive from "#components/tooltip";
-import { Collapsible, Editable, Portal } from "@ark-ui/react";
+import {
+  Collapsible,
+  Editable,
+  Portal,
+  useEditableContext,
+} from "@ark-ui/react";
+import { camelCaseProperty, esc } from "@pandacss/shared";
 import {
   BugIcon,
   Eye,
@@ -12,6 +18,8 @@ import {
   Dispatch,
   ReactNode,
   SetStateAction,
+  createContext,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -30,6 +38,8 @@ import {
   styled,
 } from "../../styled-system/jsx";
 import { flex, hstack } from "../../styled-system/patterns";
+import { SystemStyleObject } from "../../styled-system/types";
+import CrossCircleFilled from "./components/cross-circle-filled.svg";
 import { Tooltip } from "./components/tooltip";
 import { evaluator } from "./eval";
 import { InspectResult, MatchedStyleRule } from "./inspect-api";
@@ -48,6 +58,8 @@ import { useWindowSize } from "./lib/use-window-size";
 
 type Override = { value: string; computed: string | null };
 type OverrideMap = Record<string, Override | null>;
+
+const FilterContext = createContext<string | null>(null);
 
 export function SidebarPane() {
   const inspected = useInspectedResult();
@@ -147,9 +159,10 @@ export function SidebarPane() {
   // TODO save preferences in idb ?
 
   const inlineStyleKeys = Object.keys(inspected.style);
+  const hasMatches = computed.order.size > 0 && inlineStyleKeys.length > 0;
 
   return (
-    <>
+    <FilterContext.Provider value={filter}>
       <Collapsible.Root
         open={groupByLayer || groupByMedia}
         className={css({
@@ -162,38 +175,56 @@ export function SidebarPane() {
           zIndex: 1,
           display: "flex",
           flexDirection: "column",
-          px: "2px",
         })}
       >
-        <Flex alignItems="center" position="relative" zIndex="2">
-          <styled.input
-            placeholder="Filter"
-            flex="1"
-            overflow="hidden"
-            whiteSpace="nowrap"
-            backgroundColor="var(--sys-color-state-hover-on-subtle, rgb(40, 40, 40))"
-            border="1px solid var(--sys-color-neutral-outline, rgb(117, 117, 117))"
-            h="19px"
-            padding="4px 3px 3px"
-            borderRadius="4px"
-            css={{
-              color: "var(--sys-color-on-surface, #e3e3e3)",
-              _placeholder: {
-                color: "var(--sys-color-token-subtle, rgb(143, 143, 143))",
-              },
-              "&:hover:not(:focus)": {
-                backgroundColor:
-                  "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
-              },
-              _focusVisible: {
-                outline: "1px solid rgb(153, 200, 255)",
-                border: "1px solid transparent",
-                outlineColor: "rgb(153, 200, 255)",
-              },
-            }}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
+        <Flex alignItems="center" position="relative" zIndex="2" px="5px">
+          <styled.div position="relative" flex="1">
+            <styled.input
+              placeholder="Filter"
+              w="100%"
+              overflow="hidden"
+              whiteSpace="nowrap"
+              backgroundColor="var(--sys-color-state-hover-on-subtle, rgb(40, 40, 40))"
+              border="1px solid var(--sys-color-neutral-outline, rgb(117, 117, 117))"
+              h="19px"
+              padding="4px 3px 3px"
+              borderRadius="4px"
+              css={{
+                color: "var(--sys-color-on-surface, #e3e3e3)",
+                _placeholder: {
+                  color: "var(--sys-color-token-subtle, rgb(143, 143, 143))",
+                },
+                "&:hover:not(:focus)": {
+                  backgroundColor:
+                    "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
+                },
+                _focusVisible: {
+                  outline: "1px solid rgb(153, 200, 255)",
+                  border: "1px solid transparent",
+                  outlineColor: "rgb(153, 200, 255)",
+                },
+              }}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+            {filter && (
+              <span
+                className={css({
+                  w: "16px",
+                  h: "16px",
+                  position: "absolute",
+                  right: "0",
+                  top: "2px",
+                  opacity: { base: "0.7", _hover: "1" },
+                  backgroundColor: "var(--icon-default, rgb(199, 199, 199))",
+                })}
+                style={{
+                  mask: `url(${CrossCircleFilled}) center / contain no-repeat`,
+                }}
+                onClick={() => setFilter("")}
+              />
+            )}
+          </styled.div>
           <Tooltip content="Log inspected element">
             <styled.button
               ml="auto"
@@ -308,9 +339,17 @@ export function SidebarPane() {
             </styled.button>
           </Tooltip>
         </Flex>
-        <Collapsible.Content>
-          {/* var(--color-text-secondary) */}
-          <styled.div mt="-20px" mb="6px" fontSize="12px" color="#9aa0a6">
+        <Collapsible.Content
+          className={css({
+            px: "3px",
+            display: hasMatches ? "none" : undefined,
+          })}
+        >
+          <styled.div
+            mb="6px"
+            fontSize="12px"
+            color="var(--color-text-secondary, #9aa0a6)"
+          >
             Toggle layer visibility
           </styled.div>
           <Wrap gap="2" alignItems="center" mb="2px">
@@ -399,7 +438,8 @@ export function SidebarPane() {
         </Collapsible.Content>
       </Collapsible.Root>
 
-      <Stack pb="4" fontFamily="sans-serif">
+      {/* border-neutral-30 */}
+      <Stack py="4px" fontFamily="sans-serif" borderTop="1px solid #474747ff">
         <Flex
           direction="column"
           textStyle="sm"
@@ -411,7 +451,7 @@ export function SidebarPane() {
           {/* TODO add inline style */}
           {inlineStyleKeys.length ? (
             <>
-              <styled.div mt="4">
+              <styled.div>
                 {inlineStyleKeys.map((key, index) => {
                   const value = inspected.style[key] as string;
 
@@ -456,8 +496,9 @@ export function SidebarPane() {
                           <DeclarationGroup
                             key={media}
                             label={
-                              (media === symbols.noMedia ? "" : "@media ") +
-                              `${media} (${rules.length})`
+                              <HighlightMatch highlight={filter}>{`${
+                                media === symbols.noMedia ? "" : "@media "
+                              }${media} (${rules.length})`}</HighlightMatch>
                             }
                             content={
                               <DeclarationList
@@ -506,9 +547,11 @@ export function SidebarPane() {
                           <DeclarationGroup
                             key={layer}
                             label={
-                              (layer === symbols.implicitOuterLayer
-                                ? ""
-                                : "@layer ") + `${layer} (${mediaKeys.length})`
+                              <HighlightMatch highlight={filter}>{`${
+                                layer === symbols.implicitOuterLayer
+                                  ? ""
+                                  : "@layer "
+                              }${layer} (${mediaKeys.length})`}</HighlightMatch>
                             }
                             content={
                               <Stack ml="12px">
@@ -518,10 +561,13 @@ export function SidebarPane() {
                                     <DeclarationGroup
                                       key={media}
                                       label={
-                                        (media === symbols.noMedia
-                                          ? ""
-                                          : "@media ") +
-                                        `${media} (${mediaRules.length})`
+                                        <HighlightMatch highlight={filter}>
+                                          {`${
+                                            media === symbols.noMedia
+                                              ? ""
+                                              : "@media "
+                                          } ${media} (${mediaRules.length})`}
+                                        </HighlightMatch>
                                       }
                                       content={
                                         <DeclarationList
@@ -552,9 +598,9 @@ export function SidebarPane() {
                         <DeclarationGroup
                           key={layer}
                           label={
-                            (layer === symbols.implicitOuterLayer
-                              ? ""
-                              : "@layer ") + `${layer} (${rules.length})`
+                            <HighlightMatch
+                              highlight={filter}
+                            >{`${layer === symbols.implicitOuterLayer ? "" : "@layer "}${layer} (${rules.length})`}</HighlightMatch>
                           }
                           content={
                             <DeclarationList
@@ -571,14 +617,29 @@ export function SidebarPane() {
               );
             })
             .exhaustive()}
+          {!hasMatches && (
+            <Center
+              fontStyle="italic"
+              fontSize="12px"
+              lineHeight="auto"
+              fontFamily="system-ui, sans-serif"
+              p="4px"
+              textAlign="center"
+              whiteSpace="nowrap"
+              borderBottom="1px solid #474747ff"
+              color="var(--sys-color-token-subtle, rgb(143, 143, 143))"
+            >
+              <span>No matching selector or style</span>
+            </Center>
+          )}
         </Flex>
       </Stack>
-    </>
+    </FilterContext.Provider>
   );
 }
 
 interface DeclarationGroupProps {
-  label: string;
+  label: ReactNode;
   content: ReactNode;
 }
 
@@ -699,6 +760,7 @@ const Declaration = (props: DeclarationProps) => {
 
   const [enabled, setEnabled] = useState(true);
   const id = useId();
+  const filter = useContext(FilterContext);
 
   return (
     <styled.code
@@ -744,7 +806,9 @@ const Declaration = (props: DeclarationProps) => {
           className={css({ color: "rgb(92, 213, 251)" })}
           whiteSpace="nowrap"
         >
-          {hypenateProperty(prop)}
+          <HighlightMatch highlight={filter}>
+            {hypenateProperty(prop)}
+          </HighlightMatch>
         </styled.label>
         <styled.span mr="6px">:</styled.span>
         {isColor(computedValue) && (
@@ -845,29 +909,26 @@ const Declaration = (props: DeclarationProps) => {
           </TooltipPrimitive.Root>
         )}
         <styled.div ml="auto" display="flex" gap="2">
-          {(rule.media || rule.layer) && (
-            <styled.span display="none" opacity="0.4" ml="6px">
-              {rule.media}
-              {rule.layer ? `@layer ${rule.layer}` : ""}
-            </styled.span>
-          )}
           <Tooltip
             positioning={{ placement: "left" }}
             content={
               <>
                 {rule.layer && (
-                  <span>
-                    @layer {rule.layer} {"{\n\n"}{" "}
-                  </span>
+                  <HighlightMatch highlight={filter}>
+                    {`@layer ${rule.layer} \n\n `}
+                  </HighlightMatch>
                 )}
                 {rule.media && (
-                  <styled.span ml="2">
-                    @media {rule.media} {"{\n\n"}{" "}
-                  </styled.span>
+                  <HighlightMatch highlight={filter} css={{ ml: "2" }}>
+                    {`@media ${rule.media} \n\n `}
+                  </HighlightMatch>
                 )}
-                <styled.span ml={rule.media || rule.layer ? "4" : "0"}>
+                <HighlightMatch
+                  highlight={filter}
+                  css={{ ml: rule.media || rule.layer ? "4" : "0" }}
+                >
                   {prettySelector}
-                </styled.span>
+                </HighlightMatch>
                 {rule.media && <styled.span ml="2">{"}"}</styled.span>}
                 {rule.layer && <span>{"}"}</span>}
                 <styled.span mt="4">{rule.source}</styled.span>
@@ -892,7 +953,9 @@ const Declaration = (props: DeclarationProps) => {
                 await evaluator.copy(prettySelector);
               }}
             >
-              {prettySelector}
+              <HighlightMatch highlight={filter}>
+                {prettySelector}
+              </HighlightMatch>
             </styled.span>
           </Tooltip>
         </styled.div>
@@ -986,7 +1049,7 @@ const EditableValue = (props: EditableValueProps) => {
             },
           })}
         />
-        <Editable.Preview className={css({ whiteSpace: "normal!" })} />
+        <EditablePreview />
       </Editable.Area>
       {override !== null && (
         <Tooltip
@@ -1015,5 +1078,65 @@ const EditableValue = (props: EditableValueProps) => {
         </Tooltip>
       )}
     </Editable.Root>
+  );
+};
+
+const EditablePreview = () => {
+  const ctx = useEditableContext();
+  const filter = useContext(FilterContext);
+
+  return (
+    <span {...ctx.previewProps} className={css({ whiteSpace: "normal!" })}>
+      <HighlightMatch highlight={filter}>
+        {ctx.previewProps.children}
+      </HighlightMatch>
+    </span>
+  );
+};
+
+const HighlightMatch = ({
+  children,
+  highlight,
+  variant,
+  css,
+}: {
+  children: string;
+  highlight: string | null;
+  variant?: "initial" | "blue";
+  css?: SystemStyleObject;
+}) => {
+  if (!highlight?.trim()) {
+    return <styled.span css={css}>{children}</styled.span>;
+  }
+
+  const regex = new RegExp(`(${esc(highlight)})`, "gi");
+  const parts = children.split(regex);
+
+  return (
+    <span>
+      {parts.map((part, index) => {
+        let isMatching = regex.test(part);
+        if (!isMatching && children.includes("-")) {
+          isMatching = regex.test(camelCaseProperty(part));
+        }
+
+        return isMatching ? (
+          <styled.mark
+            color={variant === "blue" ? "currentColor" : undefined}
+            backgroundColor={
+              variant === "blue"
+                ? "var(--sys-color-tonal-container, rgb(0, 74, 119))"
+                : undefined
+            }
+            key={index}
+            css={css}
+          >
+            {part}
+          </styled.mark>
+        ) : (
+          part
+        );
+      })}
+    </span>
   );
 };

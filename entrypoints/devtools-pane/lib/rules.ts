@@ -13,6 +13,7 @@ import {
   shorthandForLonghand,
   shorthandProperties,
 } from "./shorthands";
+import { unescapeString } from "./unescape-string";
 
 /**
  * Goes through each parent rule until finding one that matches the predicate
@@ -60,6 +61,7 @@ export const symbols = {
 
 export interface StyleRuleWithProp extends MatchedStyleRule {
   prop: string;
+  search: string;
 }
 
 interface ComputeStylesOptions {
@@ -86,18 +88,7 @@ export const computeStyles = (
   const visibleRuleByProp = {} as Record<string, StyleRuleWithProp>;
   const visibleStyles = {} as Record<string, string>;
 
-  let search = "";
-  let mediaFilter = "";
-  let layerFilter = "";
-  if (filter) {
-    if (filter.startsWith("@media ")) {
-      mediaFilter = filter.slice("@media ".length).toLowerCase();
-    } else if (filter.startsWith("@layer ")) {
-      layerFilter = filter.slice("@layer ".length).toLowerCase();
-    } else {
-      search = filter.toLowerCase();
-    }
-  }
+  const search = filter?.toLowerCase();
 
   // console.log(rules);
   rules.forEach((rule) => {
@@ -107,30 +98,21 @@ export const computeStyles = (
       insertOrder.push(key);
       appliedStyles[key] = rule.style[key];
       // console.log({ rule: rule.selector, key, value: rule.style[key] });
-      appliedRuleOrProp[key] = { ...rule, prop: key };
+      appliedRuleOrProp[key] = {
+        ...rule,
+        prop: key,
+        search:
+          `${key} ${key.toLowerCase()} ${rule.style[key]} ${hypenateProperty(key)} ${rule.selector} ${unescapeString(rule.selector)} ${rule.source} ${rule.layer ? `@layer ${rule.layer}` : symbols.implicitOuterLayer} ${rule.media ? `@media ${rule.media}` : symbols.noMedia}`.trim(),
+      };
     });
   });
 
   Object.keys(appliedRuleOrProp).forEach((key) => {
     const rule = appliedRuleOrProp[key];
-    const value = rule.style[key];
-    const prop = key.toLocaleLowerCase();
-    const dashedProp = hypenateProperty(key);
 
-    if (
-      search &&
-      !Boolean(
-        prop.includes(search) ||
-          dashedProp.includes(search) ||
-          value.includes(search) ||
-          rule.selector.includes(search) ||
-          rule.source.includes(search)
-      )
-    ) {
+    if (search && !Boolean(rule.search.includes(search))) {
       return;
     }
-    if (mediaFilter && !rule.media?.includes(mediaFilter)) return;
-    if (layerFilter && !rule.layer?.includes(layerFilter)) return;
 
     visibleStyles[key] = rule.style[key];
     visibleRuleByProp[key] = rule;
