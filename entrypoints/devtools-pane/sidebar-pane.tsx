@@ -55,6 +55,7 @@ import { unescapeString } from "./lib/unescape-string";
 import { useInspectedResult } from "./lib/use-inspect-result";
 import { useUndoRedo } from "./lib/use-undo-redo";
 import { useWindowSize } from "./lib/use-window-size";
+import { EditableContext as EditableCtx } from "@ark-ui/react";
 
 type Override = { value: string; computed: string | null };
 type OverrideMap = Record<string, Override | null>;
@@ -147,7 +148,7 @@ export function SidebarPane() {
   // TODO only atomic (filter out rules with more than 1 declaration)
   // TODO light mode
   // TODO right click (context menu) + mimic the one from `Styles` devtools panel (Copy all declarations as CSS/JS, Copy all changes, Revert to default, etc)
-  // TODO revert all to default
+  // TODO revert all to default (by group = only in X layer/media/or all if not grouped?)
   // TODO edit component styles (match all elements with the same classes as the current element, allow updating class names that are part of the class list)
   // TODO allow toggling any declaration (not just atomic)
   // TODO add a button to add a new declaration (inline style)
@@ -158,9 +159,18 @@ export function SidebarPane() {
   // TODO blue highlight for every elements matching the hovered selector
   // TODO save preferences in idb ?
   // TODO copy raw value on click sur computed value hint
+  // TODO (firefox) red filter input on no results
+  // TODO (firefox) button to highlight all elements matching a selector
+  // TODO (firefox) green highlight (like git diff) on overrides (added inline styles/updated values)
+  // TODO add title attribute when possible
+  // TODO when adding inlien styles, add warning icon + line-though if property name is invalid ?
+  // TODO use an array for added inline styles position, so we can control the insertion order (editing mode + contentEditable right before/after a specific declaration) (and add multiple ones with the same name)
+  // TODO when property value is using a known number/amount unit, use NumberInput + Scrubber
+  // TODO when property value is using a known number/amount unit, allow shortcuts to change the step (0.1, 1, 10, 100)
+  // TODO (firefox) IF we want to show the property rules stack (like in Computed devtools panel), use firefox styling
 
   const inlineStyleKeys = Object.keys(inspected.style);
-  const hasMatches = computed.order.size > 0 && inlineStyleKeys.length > 0;
+  const hasMatches = computed.order.size > 0 || inlineStyleKeys.length > 0;
   const hasNoLayers =
     visibleLayers.length === 1 &&
     visibleLayers[0]! === symbols.implicitOuterLayer;
@@ -442,8 +452,35 @@ export function SidebarPane() {
           fontSize="11px"
           lineHeight="1.2"
           className="group"
+          id="inline-editable"
         >
-          <Flex direction="column" gap="2px" px="4px">
+          <Flex
+            direction="column"
+            gap="2px"
+            px="4px"
+            onClick={() => {
+              const inlineEditable = document.getElementById(
+                "inline-editable"
+              ) as HTMLElement;
+              if (!inlineEditable) return;
+
+              // Toggle when already editing
+              if (inlineEditable.dataset.editing != null) {
+                delete inlineEditable.dataset.editing;
+                return;
+              }
+
+              // Add data-editing otherwise
+              inlineEditable.dataset.editing = "";
+
+              // Then focus the contentEditable span
+              const editable = document.getElementById(
+                "inline-editable-top"
+              ) as HTMLElement;
+              if (!editable) return;
+              editable.focus();
+            }}
+          >
             <Flex alignItems="center">
               <styled.span
                 fontWeight="500"
@@ -458,6 +495,93 @@ export function SidebarPane() {
               >
                 {"{"}
               </styled.span>
+            </Flex>
+            <Flex
+              pl="17.5px"
+              pt="1.5px"
+              css={{
+                "&:hover:not(:focus)": {
+                  backgroundColor:
+                    "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
+                },
+                display: "none",
+                ".group[data-editing] &": { display: "inline-block" },
+              }}
+            >
+              <span
+                id="inline-editable-top"
+                contentEditable="plaintext-only"
+                className={css({
+                  boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
+                  backgroundColor:
+                    "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+                  textOverflow: "clip!important",
+                  opacity: "100%!important",
+                  margin: "0 -2px -1px",
+                  padding: "0 2px 1px",
+                  //
+                  color: "var(--sys-color-on-surface, #e3e3e3)",
+                  textDecoration: "inherit",
+                  whiteSpace: "pre",
+                  overflowWrap: "break-word",
+
+                  _focusVisible: {
+                    outline: "none",
+                  },
+                })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const inlineEditable = document.getElementById(
+                      "inline-editable"
+                    ) as HTMLElement;
+                    if (!inlineEditable) return;
+
+                    e.preventDefault();
+
+                    const target = e.target as HTMLElement;
+
+                    // Empty string, exit editing
+                    if (
+                      target.innerText == null ||
+                      target.innerText.trim() === ""
+                    ) {
+                      delete inlineEditable.dataset.editing;
+                      return;
+                    }
+
+                    // Otherwise, commit the value & reset the editing state
+                    console.log("commit-submit", target.innerText);
+                    target.innerText = "";
+                    delete inlineEditable.dataset.editing;
+                  }
+                }}
+                onBlur={(e) => {
+                  const inlineEditable = document.getElementById(
+                    "inline-editable"
+                  ) as HTMLElement;
+                  if (!inlineEditable) return;
+
+                  // Ignore blur when clicking inside the editable zone
+                  // We most likely want to stop editing
+                  if (inlineEditable.contains(e.target)) {
+                    return;
+                  }
+
+                  console.log("commit-blur", e.target.innerText);
+                  delete inlineEditable.dataset.editing;
+                }}
+              />
+              <span
+                className={css({
+                  display: "inline-block",
+                  width: "14px",
+                  textDecoration: "inherit",
+                  whiteSpace: "pre",
+                })}
+              >
+                {":"}
+              </span>
+              <span>;</span>
             </Flex>
             {/* TODO toggle inline style */}
             {inlineStyleKeys.length ? (
@@ -1158,4 +1282,12 @@ const HighlightMatch = ({
       })}
     </span>
   );
+};
+
+const EditableContext = (props: {
+  children: (editable: EditableCtx) => ReactNode;
+}) => {
+  const { children } = props;
+  const ctx = useEditableContext();
+  return children(ctx);
 };
