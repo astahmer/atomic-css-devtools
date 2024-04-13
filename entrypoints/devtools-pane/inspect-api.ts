@@ -94,8 +94,10 @@ class InspectAPI {
     } as WindowEnv;
   }
 
+  //  TODO getAttribue + astish instead
   getInlineStyleProps(element: HTMLElement) {
     if (!element.style.cssText) return [];
+    // console.log(element.style);
     return Array.from(element.style).map((key) => {
       const important = element.style.getPropertyPriority(key);
       return [
@@ -205,9 +207,16 @@ class InspectAPI {
     }
   }
 
-  updateElementStyle(element: HTMLElement, prop: string, value: string) {
+  updateInlineStyle(element: HTMLElement, prop: string, value: string) {
     if (element) {
       element.style.setProperty(prop, value);
+      return true;
+    }
+  }
+
+  appendInlineStyle(element: HTMLElement, prop: string, value: string) {
+    if (element) {
+      element.style.cssText += `${prop}: ${value};`;
       return true;
     }
   }

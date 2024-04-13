@@ -6,6 +6,7 @@ import {
   useEditableContext,
 } from "@ark-ui/react";
 import { camelCaseProperty, esc } from "@pandacss/shared";
+import { trackInteractOutside } from "@zag-js/interact-outside";
 import {
   BugIcon,
   Eye,
@@ -26,7 +27,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
 import { match } from "ts-pattern";
 import { css, cx } from "../../styled-system/css";
 import {
@@ -55,8 +55,6 @@ import { unescapeString } from "./lib/unescape-string";
 import { useInspectedResult } from "./lib/use-inspect-result";
 import { useUndoRedo } from "./lib/use-undo-redo";
 import { useWindowSize } from "./lib/use-window-size";
-import { EditableContext as EditableCtx } from "@ark-ui/react";
-import { trackInteractOutside } from "@zag-js/interact-outside";
 
 type Override = { value: string; computed: string | null };
 type OverrideMap = Record<string, Override | null>;
@@ -86,9 +84,8 @@ export function SidebarPane() {
   const overrides = api.state.overrides;
   const setOverrides = api.setNestedState("overrides");
 
-  const inserted = api.state.inserted;
-  const setInserted = api.setNestedState("inserted");
-  console.log(api.state);
+  // const inserted = api.state.inserted;
+  // const setInserted = api.setNestedState("inserted");
 
   // useEffect(() => {
   //   return trackInteractOutside(dom.)
@@ -175,7 +172,10 @@ export function SidebarPane() {
     );
   }
 
+  // TODO fix toggle inline style
+  // TODO compactCss inline style
   // TODO add a button to add a new declaration (inline style)
+  // TODO fix computed value (in atomic classes) when using inline stykes
   // TODO use an array for added inline styles position, so we can control the insertion order (editing mode + contentEditable right before/after a specific declaration) (and add multiple ones with the same name)
   // TODO copy raw value on click sur computed value hint
   // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
@@ -781,7 +781,7 @@ const Declaration = (props: DeclarationProps) => {
       // var(--sys-color-state-hover-on-subtle)
       _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
       textDecoration={enabled ? "none" : "line-through !important"}
-      data-declaration
+      data-declaration=""
     >
       <input
         id={id}
@@ -814,7 +814,9 @@ const Declaration = (props: DeclarationProps) => {
       <styled.label
         htmlFor={id}
         pl="4px"
-        className={css({ color: "rgb(92, 213, 251)" })}
+        className={css({
+          color: "var(--sys-color-token-property-special, rgb(92, 213, 251))",
+        })}
         whiteSpace="nowrap"
       >
         <HighlightMatch highlight={filter}>
@@ -1009,7 +1011,7 @@ const EditableValue = (props: EditableValueProps) => {
   const updateValue = (update: string) => {
     const kind =
       selector === symbols.inlineStyleSelector ? "inlineStyle" : "cssRule";
-    return evaluator.updateStyleRule({
+    return evaluator.api.updateStyleRule({
       selector: kind === "inlineStyle" ? elementSelector : selector,
       prop: hypenateProperty(prop),
       value: update,
@@ -1164,20 +1166,54 @@ interface InsertInlineRowProps {
 
 const InsertInlineRow = (props: InsertInlineRowProps) => {
   const { inspected, overrides, setOverrides } = props;
-  // const [state, setState] = useState<"idle"| "editing-key" | "editing-value">("idle");
+  // "idle" | "key" | "value"
+  const getState = () => dom.getInlineContainer().dataset.editing || "idle";
+  const setState = (state: "idle" | "key" | "value") => {
+    console.log(
+      `setState ${dom.getInlineContainer().dataset.editing} => ${state}`
+    );
+    if (state === "idle") {
+      delete dom.getInlineContainer().dataset.editing;
+      return;
+    }
+
+    dom.getInlineContainer().dataset.editing = state;
+  };
 
   useEffect(() => {
     return trackInteractOutside(() => dom.getEditableKey(), {
-      onInteractOutside: () => {
-        console.log("outside key");
+      exclude: (target) => {
+        return dom.getInlineContainer().contains(target);
+      },
+      onInteractOutside: (e) => {
+        const state = dom.getInlineContainer().dataset.editing;
+        if (state === "key") {
+          const editable = dom.getEditableKey();
+          if (editable.innerText == null || editable.innerText.trim() === "") {
+            setState("idle");
+            return;
+          }
+
+          console.log("outside key", e);
+          setState("value");
+        }
       },
     });
   }, []);
 
   useEffect(() => {
     return trackInteractOutside(() => dom.getEditableValue(), {
-      onInteractOutside: () => {
-        console.log("outside value");
+      onInteractOutside: (e) => {
+        const state = dom.getInlineContainer().dataset.editing;
+        if (state === "value") {
+          console.log("outside value", e);
+          setState("idle");
+
+          console.log({
+            key: dom.getEditableKey().innerText,
+            value: dom.getEditableValue().innerText,
+          });
+        }
       },
     });
   }, []);
@@ -1190,31 +1226,26 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
       id="inline-styles"
       className="group"
       onClick={(e) => {
-        const container = e.currentTarget as HTMLElement;
-        const editable = dom.getEditableKey();
         const target = e.target as HTMLElement;
-
-        // Toggle when already editing
-        if (container.dataset.editing != null && target !== editable) {
-          // console.log("exit editing123");
-          // delete container.dataset.editing;
+        const row = dom.getEditableRow();
+        const state = getState();
+        console.log(target, e.currentTarget, row);
+        const declaration = target.closest("[data-declaration]");
+        // if (target.dataset.declaration && row.contains(target)) return;
+        if (declaration) {
           return;
         }
 
-        if (!target.dataset.declaration) {
-          const declaration = target.closest("[data-declaration]");
-          console.log(target, declaration);
-          if (declaration) return;
+        if (state === "key") {
+          return setState("idle");
         }
 
-        console.log("start editing", target.closest("[data-declaration]"));
+        if (state === "idle") {
+          console.log("setState key");
+          setState("key");
 
-        // Add data-editing otherwise
-        container.dataset.editing = "prop";
-
-        // Then focus the contentEditable span
-        if (!editable) return;
-        editable.focus();
+          dom.getEditableKey().focus();
+        }
       }}
     >
       <Flex alignItems="center" id="editable-row" tabIndex={0}>
@@ -1247,11 +1278,24 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
         <span
           id="editable-key"
           contentEditable="plaintext-only"
-          className={contentEditableStyles}
+          className={css(contentEditableStyles, {
+            ".group[data-editing=key] &": {
+              boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
+              backgroundColor:
+                "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+            },
+            ".group[data-editing=value] &": {
+              color:
+                "var(--sys-color-token-property-special, rgb(92, 213, 251))",
+            },
+          })}
           onKeyDown={(e) => {
+            const state = getState();
+            console.log({ state }, e.key);
+            if (state !== "key") return;
             if (e.key !== "Enter") return;
 
-            const container = dom.getInlineStyleContainer();
+            const container = dom.getInlineContainer();
 
             e.preventDefault();
 
@@ -1267,22 +1311,11 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
             }
 
             // Otherwise, commit the value & reset the editing state
-            console.log("commit-submit", editable.innerText);
-            container.dataset.editing = "value";
+            console.log("commit-submit-key", editable.innerText);
+            setState("value");
             const editableValue = dom.getEditableValue();
             editableValue.focus();
           }}
-          // onBlur={(e) => {
-          //   const container = dom.getInlineStyleContainer();
-          //   if (!container) return;
-
-          //   console.log("commit-blur", e.target.innerText);
-          //   container.dataset.editing = "value";
-          //   const editableValue = dom.getEditableValue();
-          //   editableValue.focus();
-
-          //   // setInserted((current) => current.concat([]))
-          // }}
         />
         <span
           className={css({
@@ -1298,11 +1331,17 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
           tabIndex={0}
           id="editable-value"
           contentEditable="plaintext-only"
-          className={contentEditableStyles}
+          className={css(contentEditableStyles, {
+            ".group[data-editing=value] &": {
+              boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
+              backgroundColor:
+                "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+            },
+          })}
           onKeyDown={(e) => {
             if (e.key !== "Enter") return;
 
-            const container = dom.getInlineStyleContainer();
+            const container = dom.getInlineContainer();
 
             e.preventDefault();
 
@@ -1318,22 +1357,32 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
             }
 
             // Otherwise, commit the value & reset the editing state
-            console.log("commit-submit", editable.innerText);
-            delete container.dataset.editing;
-            console.log({
+            console.log("commit-submit-value", editable.innerText);
+            const declaration = {
               key: dom.getEditableKey().innerText,
               value: dom.getEditableValue().innerText,
-            });
+            };
+            setState("idle");
+            editable.innerText = "";
+            dom.getEditableKey().innerText = "";
+            evaluator.api
+              .appendInlineStyle({
+                selector: inspected.selector,
+                prop: declaration.key,
+                value: declaration.value,
+              })
+              .then(({ hasUpdated, computedValue }) => {
+                if (hasUpdated) {
+                  const { key, value } = declaration;
+                  setOverrides((overrides) => ({
+                    ...overrides,
+                    [overrideKey]: key,
+                    ["style:" + key]:
+                      value != null ? { value, computed: computedValue } : null,
+                  }));
+                }
+              });
           }}
-          // onBlur={(e) => {
-          //   const container = dom.getInlineStyleContainer();
-          //   if (!container) return;
-
-          //   console.log("commit-blur", e.target.innerText);
-          //   delete container.dataset.editing;
-
-          //   // setInserted((current) => current.concat([]))
-          // }}
         />
         <span>;</span>
       </Flex>
@@ -1383,7 +1432,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
 };
 
 const dom = {
-  getInlineStyleContainer: () =>
+  getInlineContainer: () =>
     document.getElementById("inline-styles") as HTMLElement,
   getEditableRow: () => document.getElementById("editable-row") as HTMLElement,
   getEditableKey: () => document.getElementById("editable-key") as HTMLElement,
@@ -1391,9 +1440,7 @@ const dom = {
     document.getElementById("editable-value") as HTMLElement,
 };
 
-const contentEditableStyles = css({
-  boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
-  backgroundColor: "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+const contentEditableStyles = css.raw({
   textOverflow: "clip!important",
   opacity: "100%!important",
   margin: "0 -2px -1px",

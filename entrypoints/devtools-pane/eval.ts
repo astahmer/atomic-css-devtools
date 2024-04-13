@@ -1,6 +1,7 @@
 import { onMessage, sendMessage } from "webext-bridge/devtools";
 import { InspectResult } from "./inspect-api";
-import { UpdateStyleRuleMessage } from "./message-typings";
+import { SendMessageProxy } from "./message-typings";
+import { ProtocolMap, ProtocolWithReturn } from "webext-bridge";
 
 const devtools = browser.devtools;
 const inspectedWindow = devtools.inspectedWindow;
@@ -70,11 +71,6 @@ const inspect = async () => {
     const esc = (sel: string) => {
       return (sel + "").replace(rcssescape, fcssescape);
     };
-    const getClassSelector = (el: HTMLElement) => {
-      return Array.from(el.classList)
-        .map((c) => "." + esc(c))
-        .join("");
-    };
 
     // Use nth-of-type as a more reliable alternative to nth-child
     const getNthSelector = (el: HTMLElement) => {
@@ -108,10 +104,6 @@ const inspect = async () => {
       while (element.nodeType === Node.ELEMENT_NODE) {
         let selector = element.nodeName.toLowerCase();
 
-        if (element.className) {
-          // selector += getClassSelector(element);
-        }
-
         if (element.parentNode && element.parentNode.childElementCount > 1) {
           const nth = getNthSelector(element);
 
@@ -133,14 +125,25 @@ const inspect = async () => {
 
   if (!selector) return null;
 
-  return await sendMessage(
-    "inspectElement",
-    { selector: selector },
-    { context: "content-script", tabId: null as any }
-  );
+  return api.inspectElement({ selector: selector });
 };
 
+const api = new Proxy<SendMessageProxy>({} as any, {
+  get<T extends keyof ProtocolMap>(_target: any, propKey: T) {
+    const context = "content-script";
+    const tabId = null as any;
+
+    return async function (arg?: any) {
+      // console.log(`Calling ${propKey} with payload`, arg);
+      return sendMessage(propKey, arg, { context, tabId });
+    } as ProtocolMap[T] extends ProtocolWithReturn<infer Data, infer Return>
+      ? (args: Data) => Promise<Return>
+      : (args: ProtocolMap[T]) => Promise<void>;
+  },
+});
+
 export const evaluator = {
+  api,
   fn: evalFn,
   el: evalEl,
   copy: (valueToCopy: string) => {
@@ -181,13 +184,6 @@ export const evaluator = {
   onPaneHidden: (cb: () => void) => {
     onMessage("devtools-hidden", () => {
       cb();
-    });
-  },
-  updateStyleRule: async (payload: UpdateStyleRuleMessage) => {
-    console.log(payload);
-    return sendMessage("updateStyleRule", payload, {
-      context: "content-script",
-      tabId: null as any,
     });
   },
 };

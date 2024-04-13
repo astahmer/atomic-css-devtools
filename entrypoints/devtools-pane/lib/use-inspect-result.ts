@@ -20,7 +20,6 @@ export const useInspectedResult = (
   useEffect(() => {
     return evaluator.onPaneShown(async () => {
       const update = await evaluator.inspectElement();
-      // console.log(update);
 
       setResult(update ?? null);
       cb?.(update ?? null);
