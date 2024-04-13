@@ -14,6 +14,7 @@ class InspectAPI {
     const matches = this.getMatchingRules(element);
     const cssVars = this.getCssVars(element);
     const layersOrder = matches.layerOrders.flat();
+    const styleEntries = this.getInlineStyleProps(element);
 
     const serialized = {
       selector,
@@ -30,9 +31,13 @@ class InspectAPI {
         Array.from(computed).map((key) => [key, computed.getPropertyValue(key)])
       ),
       /**
+       * This contains the ordered `style` attributes as an array of [property, value] pairs
+       */
+      styleEntries,
+      /**
        * This contains the `style` attribute resulting object applied on the element
        */
-      style: this.getInlineStyleProps(element),
+      // style: Object.fromEntries(styleEntries),
       /**
        * This is needed to match rules that are nested in media queries
        * and filter them out if they are not applied with this environment
@@ -90,17 +95,15 @@ class InspectAPI {
   }
 
   getInlineStyleProps(element: HTMLElement) {
-    if (!element.style.cssText) return {};
-    return Object.fromEntries(
-      Array.from(element.style).map((key) => {
-        const important = element.style.getPropertyPriority(key);
-        return [
-          key,
-          element.style[key as keyof typeof element.style] +
-            (important ? " !" + important : ""),
-        ];
-      })
-    );
+    if (!element.style.cssText) return [];
+    return Array.from(element.style).map((key) => {
+      const important = element.style.getPropertyPriority(key);
+      return [
+        key,
+        element.style[key as keyof typeof element.style] +
+          (important ? " !" + important : ""),
+      ];
+    });
   }
 
   /**

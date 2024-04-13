@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { evaluator } from "../eval";
 import { InspectResult } from "../inspect-api";
 
-export const useInspectedResult = () => {
+export const useInspectedResult = (
+  cb?: (result: InspectResult | null) => void
+) => {
   const [result, setResult] = useState(null as InspectResult | null);
 
   // Refresh on inspected element changed
@@ -10,6 +12,7 @@ export const useInspectedResult = () => {
     return evaluator.onSelectionChanged((update) => {
       // console.log(update);
       setResult(update);
+      cb?.(update);
     });
   }, []);
 
@@ -20,6 +23,7 @@ export const useInspectedResult = () => {
       // console.log(update);
 
       setResult(update ?? null);
+      cb?.(update ?? null);
     });
   }, []);
 
@@ -32,6 +36,7 @@ export const useInspectedResult = () => {
     const run = async () => {
       const update = await evaluator.inspectElement();
       setResult(update ?? null);
+      cb?.(update ?? null);
     };
     run();
   }, [result?.env.location]);

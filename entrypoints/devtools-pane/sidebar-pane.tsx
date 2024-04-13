@@ -56,14 +56,22 @@ import { useInspectedResult } from "./lib/use-inspect-result";
 import { useUndoRedo } from "./lib/use-undo-redo";
 import { useWindowSize } from "./lib/use-window-size";
 import { EditableContext as EditableCtx } from "@ark-ui/react";
+import { trackInteractOutside } from "@zag-js/interact-outside";
 
 type Override = { value: string; computed: string | null };
 type OverrideMap = Record<string, Override | null>;
+type HistoryState = {
+  overrides: OverrideMap | null;
+  inserted: Array<string[]>;
+};
 
 const FilterContext = createContext<string | null>(null);
+const overrideKey = Symbol("overrideKey");
 
 export function SidebarPane() {
-  const inspected = useInspectedResult();
+  const inspected = useInspectedResult(() => {
+    api.reset();
+  });
   const size = useWindowSize();
 
   const rulesMatchingEnv = useMemo(
@@ -74,12 +82,37 @@ export function SidebarPane() {
     [inspected, size]
   );
 
-  const api = useUndoRedo(null as OverrideMap | null);
-  const overrides = api.state;
-  const setOverrides = api.setState;
+  const api = useUndoRedo({} as HistoryState);
+  const overrides = api.state.overrides;
+  const setOverrides = api.setNestedState("overrides");
 
-  useHotkeys("mod+z", api.undo, []);
-  useHotkeys("mod+shift+z", api.redo, []);
+  const inserted = api.state.inserted;
+  const setInserted = api.setNestedState("inserted");
+  console.log(api.state);
+
+  // useEffect(() => {
+  //   return trackInteractOutside(dom.)
+  // }, [])
+
+  // TODO
+  // useHotkeys(
+  //   "mod+z",
+  //   () => {
+  //     api.undo((prev, next) => {
+  //       if (api.getUpdatedKey(prev) === "overrides")
+  //       // const { overrides, inserted } = current;
+  //       console.log(prev, next);
+  //     });
+  //   },
+  //   []
+  // );
+  // useHotkeys(
+  //   "mod+shift+z",
+  //   () => {
+  //     api.redo();
+  //   },
+  //   []
+  // );
 
   const [groupByLayer, setGroupByLayer] = useState(false);
   const [groupByMedia, setGroupByMedia] = useState(false);
@@ -114,13 +147,14 @@ export function SidebarPane() {
     [computed.rulesByLayer]
   );
 
-  // Reset visible layers when visiting a different website that have different @layers
+  // Keep track of the inspected website location
   const prevLocation = useRef(null as string | null);
   useEffect(() => {
     if (!inspected?.env.location) return;
     prevLocation.current = inspected?.env.location;
   }, [inspected?.env.location]);
 
+  // Reset visible layers when visiting a different website that have different @layers
   useEffect(() => {
     if (
       prevLocation.current &&
@@ -141,36 +175,36 @@ export function SidebarPane() {
     );
   }
 
-  // TODO toggle show source (next to layer/media)
-  // TODO toggle btn to remove selectors with `*`
-  // TODO highlight things matching filter + part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
-  // TODO CSS vars
-  // TODO only atomic (filter out rules with more than 1 declaration)
+  // TODO add a button to add a new declaration (inline style)
+  // TODO use an array for added inline styles position, so we can control the insertion order (editing mode + contentEditable right before/after a specific declaration) (and add multiple ones with the same name)
+  // TODO copy raw value on click sur computed value hint
+  // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
   // TODO light mode
   // TODO right click (context menu) + mimic the one from `Styles` devtools panel (Copy all declarations as CSS/JS, Copy all changes, Revert to default, etc)
-  // TODO revert all to default (by group = only in X layer/media/or all if not grouped?)
   // TODO edit component styles (match all elements with the same classes as the current element, allow updating class names that are part of the class list)
-  // TODO allow toggling any declaration (not just atomic)
-  // TODO add a button to add a new declaration (inline style)
   // TODO EditableValue for property name
+  // TODO allow toggling any declaration (not just atomic) (just use an override)
   // TODO auto-completions for property names
   // TODO auto-completions for CSS vars
+  // TODO toggle show source (next to layer/media)
+  // TODO toggle btn to remove selectors with `*`
+  // TODO CSS vars
+  // TODO only atomic (filter out rules with more than 1 declaration)
+  // TODO revert all to default (by group = only in X layer/media/or all if not grouped?)
   // TODO collapse/expand all
-  // TODO blue highlight for every elements matching the hovered selector
+  // TODO blue highlight (in the browser host website) for every elements matching the hovered selector
+  // TODO (firefox) button to highlight all elements matching a selector (like the previous one but click to toggle it)
   // TODO save preferences in idb ?
-  // TODO copy raw value on click sur computed value hint
   // TODO (firefox) red filter input on no results
-  // TODO (firefox) button to highlight all elements matching a selector
   // TODO (firefox) green highlight (like git diff) on overrides (added inline styles/updated values)
   // TODO add title attribute when possible
   // TODO when adding inlien styles, add warning icon + line-though if property name is invalid ?
-  // TODO use an array for added inline styles position, so we can control the insertion order (editing mode + contentEditable right before/after a specific declaration) (and add multiple ones with the same name)
   // TODO when property value is using a known number/amount unit, use NumberInput + Scrubber
   // TODO when property value is using a known number/amount unit, allow shortcuts to change the step (0.1, 1, 10, 100)
   // TODO (firefox) IF we want to show the property rules stack (like in Computed devtools panel), use firefox styling
 
-  const inlineStyleKeys = Object.keys(inspected.style);
-  const hasMatches = computed.order.size > 0 || inlineStyleKeys.length > 0;
+  const hasMatches =
+    computed.order.size > 0 || inspected.styleEntries.length > 0;
   const hasNoLayers =
     visibleLayers.length === 1 &&
     visibleLayers[0]! === symbols.implicitOuterLayer;
@@ -194,6 +228,7 @@ export function SidebarPane() {
         <Flex alignItems="center" position="relative" zIndex="2" px="5px">
           <styled.div position="relative" flex="1">
             <styled.input
+              mt="1px"
               placeholder="Filter"
               w="100%"
               overflow="hidden"
@@ -267,7 +302,8 @@ export function SidebarPane() {
                     visibleLayers,
                     visibleLayersState,
                   },
-                  computed
+                  computed,
+                  api.state
                 )
               }
             >
@@ -451,182 +487,13 @@ export function SidebarPane() {
           fontFamily="monospace"
           fontSize="11px"
           lineHeight="1.2"
-          className="group"
-          id="inline-editable"
         >
-          <Flex
-            direction="column"
-            gap="2px"
-            px="4px"
-            onClick={() => {
-              const inlineEditable = document.getElementById(
-                "inline-editable"
-              ) as HTMLElement;
-              if (!inlineEditable) return;
-
-              // Toggle when already editing
-              if (inlineEditable.dataset.editing != null) {
-                delete inlineEditable.dataset.editing;
-                return;
-              }
-
-              // Add data-editing otherwise
-              inlineEditable.dataset.editing = "";
-
-              // Then focus the contentEditable span
-              const editable = document.getElementById(
-                "inline-editable-top"
-              ) as HTMLElement;
-              if (!editable) return;
-              editable.focus();
-            }}
-          >
-            <Flex alignItems="center">
-              <styled.span
-                fontWeight="500"
-                color="var(--sys-color-state-disabled, rgba(227, 227, 227, 0.38))"
-                mr="6px"
-              >
-                element.style
-              </styled.span>
-              <styled.span
-                fontWeight="600"
-                color="var(--sys-color-on-surface, rgb(227, 227, 227))"
-              >
-                {"{"}
-              </styled.span>
-            </Flex>
-            <Flex
-              pl="17.5px"
-              pt="1.5px"
-              css={{
-                "&:hover:not(:focus)": {
-                  backgroundColor:
-                    "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
-                },
-                display: "none",
-                ".group[data-editing] &": { display: "inline-block" },
-              }}
-            >
-              <span
-                id="inline-editable-top"
-                contentEditable="plaintext-only"
-                className={css({
-                  boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
-                  backgroundColor:
-                    "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
-                  textOverflow: "clip!important",
-                  opacity: "100%!important",
-                  margin: "0 -2px -1px",
-                  padding: "0 2px 1px",
-                  //
-                  color: "var(--sys-color-on-surface, #e3e3e3)",
-                  textDecoration: "inherit",
-                  whiteSpace: "pre",
-                  overflowWrap: "break-word",
-
-                  _focusVisible: {
-                    outline: "none",
-                  },
-                })}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const inlineEditable = document.getElementById(
-                      "inline-editable"
-                    ) as HTMLElement;
-                    if (!inlineEditable) return;
-
-                    e.preventDefault();
-
-                    const target = e.target as HTMLElement;
-
-                    // Empty string, exit editing
-                    if (
-                      target.innerText == null ||
-                      target.innerText.trim() === ""
-                    ) {
-                      delete inlineEditable.dataset.editing;
-                      return;
-                    }
-
-                    // Otherwise, commit the value & reset the editing state
-                    console.log("commit-submit", target.innerText);
-                    target.innerText = "";
-                    delete inlineEditable.dataset.editing;
-                  }
-                }}
-                onBlur={(e) => {
-                  const inlineEditable = document.getElementById(
-                    "inline-editable"
-                  ) as HTMLElement;
-                  if (!inlineEditable) return;
-
-                  // Ignore blur when clicking inside the editable zone
-                  // We most likely want to stop editing
-                  if (inlineEditable.contains(e.target)) {
-                    return;
-                  }
-
-                  console.log("commit-blur", e.target.innerText);
-                  delete inlineEditable.dataset.editing;
-                }}
-              />
-              <span
-                className={css({
-                  display: "inline-block",
-                  width: "14px",
-                  textDecoration: "inherit",
-                  whiteSpace: "pre",
-                })}
-              >
-                {":"}
-              </span>
-              <span>;</span>
-            </Flex>
-            {/* TODO toggle inline style */}
-            {inlineStyleKeys.length ? (
-              <>
-                <styled.div>
-                  {inlineStyleKeys.map((key, index) => {
-                    const value = inspected.style[key] as string;
-
-                    return (
-                      <Declaration
-                        {...{
-                          key,
-                          index,
-                          prop: key,
-                          matchValue: value,
-                          rule: {
-                            type: "style",
-                            selector: symbols.inlineStyleSelector,
-                            style: { [key]: value },
-                            parentRule: null,
-                            source: symbols.inlineStyleSelector,
-                          },
-                          inspected,
-                          override: overrides?.["style:" + key] ?? null,
-                          setOverride: (value, computed) =>
-                            setOverrides((overrides) => ({
-                              ...overrides,
-                              ["style:" + key]:
-                                value != null ? { value, computed } : null,
-                            })),
-                        }}
-                      />
-                    );
-                  })}
-                </styled.div>
-              </>
-            ) : null}
-            <styled.span
-              fontWeight="600"
-              color="var(--sys-color-on-surface, rgb(227, 227, 227))"
-            >
-              {"}"}
-            </styled.span>
-            <styled.hr my="1" opacity="0.2" />
-          </Flex>
+          {/* TODO toggle inline style */}
+          <InsertInlineRow
+            inspected={inspected}
+            overrides={overrides}
+            setOverrides={setOverrides}
+          />
           {match(groupByLayer)
             .with(false, () => {
               if (groupByMedia) {
@@ -671,6 +538,7 @@ export function SidebarPane() {
                     setOverride: (value, computed) =>
                       setOverrides((overrides) => ({
                         ...overrides,
+                        [overrideKey]: key,
                         [key]: value != null ? { value, computed } : null,
                       })),
                   }}
@@ -861,6 +729,7 @@ const DeclarationList = (props: DeclarationListProps) => {
           setOverride: (value, computed) =>
             setOverrides((overrides) => ({
               ...overrides,
+              [overrideKey]: prop,
               [prop]: value != null ? { value, computed } : null,
             })),
         }}
@@ -907,201 +776,196 @@ const Declaration = (props: DeclarationProps) => {
   return (
     <styled.code
       display="flex"
-      flexDirection="column"
-      gap="1px"
+      alignItems="flex-start"
+      mr="2"
       // var(--sys-color-state-hover-on-subtle)
       _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
       textDecoration={enabled ? "none" : "line-through !important"}
+      data-declaration
     >
-      <styled.div display="flex" alignItems="flex-start" mr="2">
-        <input
-          id={id}
-          type="checkbox"
-          defaultChecked
-          className={css({
-            ...checkboxStyles,
-            opacity: isTogglableClass ? "1" : "0",
-            visibility: "hidden",
-            _groupHover: {
-              visibility: "visible",
-            },
-          })}
-          onChange={async () => {
-            const isEnabled = await evaluator.el((el, className) => {
-              try {
-                return el.classList.toggle(className);
-              } catch (err) {
-                console.log(err);
-              }
-            }, prettySelector.slice(1));
-
-            if (typeof isEnabled === "boolean") {
-              setEnabled(isEnabled);
+      <input
+        id={id}
+        type="checkbox"
+        defaultChecked
+        className={css({
+          ...checkboxStyles,
+          opacity: isTogglableClass ? "1" : "0",
+          visibility: "hidden",
+          _groupHover: {
+            visibility: "visible",
+          },
+        })}
+        onChange={async () => {
+          const isEnabled = await evaluator.el((el, className) => {
+            try {
+              return el.classList.toggle(className);
+            } catch (err) {
+              console.log(err);
             }
-          }}
+          }, prettySelector.slice(1));
+
+          if (typeof isEnabled === "boolean") {
+            setEnabled(isEnabled);
+          }
+        }}
+      />
+      {/* TODO editable property */}
+
+      <styled.label
+        htmlFor={id}
+        pl="4px"
+        className={css({ color: "rgb(92, 213, 251)" })}
+        whiteSpace="nowrap"
+      >
+        <HighlightMatch highlight={filter}>
+          {hypenateProperty(prop)}
+        </HighlightMatch>
+      </styled.label>
+      <styled.span mr="6px">:</styled.span>
+      {isColor(computedValue) && (
+        <styled.div
+          alignSelf="center"
+          display="inline-block"
+          border="1px solid var(--sys-color-neutral-outline, #757575)"
+          width="9.6px"
+          height="9.6px"
+          mx="4px"
+          style={{ backgroundColor: computedValue }}
         />
-        {/* TODO editable property */}
+      )}
+      <EditableValue
+        prop={prop}
+        elementSelector={inspected.selector}
+        selector={rule.selector}
+        matchValue={matchValue}
+        override={override}
+        setOverride={setOverride}
+      />
+      {matchValue.startsWith("var(--") && computedValue && (
+        <TooltipPrimitive.Root
+          openDelay={0}
+          closeDelay={0}
+          positioning={{ placement: "bottom" }}
+          lazyMount
+          // Restore textDecoration on close
+          onOpenChange={(details) => {
+            const tooltipTrigger = document.querySelector(
+              `[data-tooltipid="trigger${prop + index}" ]`
+            ) as HTMLElement;
+            if (!tooltipTrigger) return;
 
-        <styled.label
-          htmlFor={id}
-          pl="4px"
-          className={css({ color: "rgb(92, 213, 251)" })}
-          whiteSpace="nowrap"
-        >
-          <HighlightMatch highlight={filter}>
-            {hypenateProperty(prop)}
-          </HighlightMatch>
-        </styled.label>
-        <styled.span mr="6px">:</styled.span>
-        {isColor(computedValue) && (
-          <styled.div
-            alignSelf="center"
-            display="inline-block"
-            border="1px solid var(--sys-color-neutral-outline, #757575)"
-            width="9.6px"
-            height="9.6px"
-            mx="4px"
-            style={{ backgroundColor: computedValue }}
-          />
-        )}
-        <EditableValue
-          prop={prop}
-          elementSelector={inspected.selector}
-          selector={rule.selector}
-          matchValue={matchValue}
-          override={override}
-          setOverride={setOverride}
-        />
-        {matchValue.startsWith("var(--") && computedValue && (
-          <TooltipPrimitive.Root
-            openDelay={0}
-            closeDelay={0}
-            positioning={{ placement: "bottom" }}
-            lazyMount
-            // Restore textDecoration on close
-            onOpenChange={(details) => {
-              const tooltipTrigger = document.querySelector(
-                `[data-tooltipid="trigger${prop + index}" ]`
-              ) as HTMLElement;
-              if (!tooltipTrigger) return;
+            if (details.open) {
+              const tooltipContent = document.querySelector(
+                `[data-tooltipid="content${prop + index}" ]`
+              )?.parentElement as HTMLElement;
+              if (!tooltipContent) return;
 
-              if (details.open) {
-                const tooltipContent = document.querySelector(
-                  `[data-tooltipid="content${prop + index}" ]`
-                )?.parentElement as HTMLElement;
-                if (!tooltipContent) return;
+              if (!tooltipContent.dataset.overflow) return;
 
-                if (!tooltipContent.dataset.overflow) return;
-
-                tooltipTrigger.style.textDecoration = "underline";
-                return;
-              }
-
-              tooltipTrigger.style.textDecoration = "";
+              tooltipTrigger.style.textDecoration = "underline";
               return;
-            }}
-          >
-            <TooltipPrimitive.Trigger asChild>
-              <styled.span
-                data-tooltipid={`trigger${prop}` + index}
-                ml="11px"
-                fontSize="10px"
-                opacity="0.7"
-                textOverflow="ellipsis"
-                overflow="hidden"
-                whiteSpace="nowrap"
-                maxWidth="130px"
-              >
-                {computedValue}
-              </styled.span>
-            </TooltipPrimitive.Trigger>
-            <Portal>
-              <TooltipPrimitive.Positioner>
-                <span
-                  // Only show tooltip if text is overflowing
-                  ref={(node) => {
-                    const tooltipTrigger = document.querySelector(
-                      `[data-tooltipid="trigger${prop + index}" ]`
-                    ) as HTMLElement;
-                    if (!tooltipTrigger) return;
-
-                    const tooltipContent = node as HTMLElement;
-                    if (!tooltipContent) return;
-
-                    if (
-                      tooltipTrigger.offsetWidth < tooltipTrigger.scrollWidth
-                    ) {
-                      // Text is overflowing, add tooltip
-                      tooltipContent.style.display = "";
-                      tooltipContent.dataset.overflow = "true";
-                    } else {
-                      tooltipContent.style.display = "none";
-                    }
-                  }}
-                >
-                  <TooltipPrimitive.Content
-                    data-tooltipid={`content${prop}` + index}
-                    maxW="var(--available-width)"
-                    animation="unset"
-                  >
-                    {computedValue}
-                  </TooltipPrimitive.Content>
-                </span>
-              </TooltipPrimitive.Positioner>
-            </Portal>
-          </TooltipPrimitive.Root>
-        )}
-        <styled.div ml="auto" display="flex" gap="2">
-          <Tooltip
-            positioning={{ placement: "left" }}
-            content={
-              <>
-                {rule.layer && (
-                  <HighlightMatch highlight={filter}>
-                    {`@layer ${rule.layer} \n\n `}
-                  </HighlightMatch>
-                )}
-                {rule.media && (
-                  <HighlightMatch highlight={filter} css={{ ml: "2" }}>
-                    {`@media ${rule.media} \n\n `}
-                  </HighlightMatch>
-                )}
-                <HighlightMatch
-                  highlight={filter}
-                  css={{ ml: rule.media || rule.layer ? "4" : "0" }}
-                >
-                  {prettySelector}
-                </HighlightMatch>
-                {rule.media && <styled.span ml="2">{"}"}</styled.span>}
-                {rule.layer && <span>{"}"}</span>}
-                <styled.span mt="4">{rule.source}</styled.span>
-              </>
             }
-          >
+
+            tooltipTrigger.style.textDecoration = "";
+            return;
+          }}
+        >
+          <TooltipPrimitive.Trigger asChild>
             <styled.span
-              maxWidth={{
-                base: "150px",
-                sm: "200px",
-                md: "300px",
-              }}
+              data-tooltipid={`trigger${prop}` + index}
+              ml="11px"
+              fontSize="10px"
+              opacity="0.7"
               textOverflow="ellipsis"
               overflow="hidden"
               whiteSpace="nowrap"
-              opacity="0.7"
-              // cursor="pointer"
-              textDecoration={{
-                _hover: "underline",
-              }}
-              onClick={async () => {
-                await evaluator.copy(prettySelector);
-              }}
+              maxWidth="130px"
             >
-              <HighlightMatch highlight={filter}>
+              {computedValue}
+            </styled.span>
+          </TooltipPrimitive.Trigger>
+          <Portal>
+            <TooltipPrimitive.Positioner>
+              <span
+                // Only show tooltip if text is overflowing
+                ref={(node) => {
+                  const tooltipTrigger = document.querySelector(
+                    `[data-tooltipid="trigger${prop + index}" ]`
+                  ) as HTMLElement;
+                  if (!tooltipTrigger) return;
+
+                  const tooltipContent = node as HTMLElement;
+                  if (!tooltipContent) return;
+
+                  if (tooltipTrigger.offsetWidth < tooltipTrigger.scrollWidth) {
+                    // Text is overflowing, add tooltip
+                    tooltipContent.style.display = "";
+                    tooltipContent.dataset.overflow = "true";
+                  } else {
+                    tooltipContent.style.display = "none";
+                  }
+                }}
+              >
+                <TooltipPrimitive.Content
+                  data-tooltipid={`content${prop}` + index}
+                  maxW="var(--available-width)"
+                  animation="unset"
+                >
+                  {computedValue}
+                </TooltipPrimitive.Content>
+              </span>
+            </TooltipPrimitive.Positioner>
+          </Portal>
+        </TooltipPrimitive.Root>
+      )}
+      <styled.div ml="auto" display="flex" gap="2">
+        <Tooltip
+          positioning={{ placement: "left" }}
+          content={
+            <>
+              {rule.layer && (
+                <HighlightMatch highlight={filter}>
+                  {`@layer ${rule.layer} \n\n `}
+                </HighlightMatch>
+              )}
+              {rule.media && (
+                <HighlightMatch highlight={filter} css={{ ml: "2" }}>
+                  {`@media ${rule.media} \n\n `}
+                </HighlightMatch>
+              )}
+              <HighlightMatch
+                highlight={filter}
+                css={{ ml: rule.media || rule.layer ? "4" : "0" }}
+              >
                 {prettySelector}
               </HighlightMatch>
-            </styled.span>
-          </Tooltip>
-        </styled.div>
+              {rule.media && <styled.span ml="2">{"}"}</styled.span>}
+              {rule.layer && <span>{"}"}</span>}
+              <styled.span mt="4">{rule.source}</styled.span>
+            </>
+          }
+        >
+          <styled.span
+            maxWidth={{
+              base: "150px",
+              sm: "200px",
+              md: "300px",
+            }}
+            textOverflow="ellipsis"
+            overflow="hidden"
+            whiteSpace="nowrap"
+            opacity="0.7"
+            // cursor="pointer"
+            textDecoration={{
+              _hover: "underline",
+            }}
+            onClick={async () => {
+              await evaluator.copy(prettySelector);
+            }}
+          >
+            <HighlightMatch highlight={filter}>{prettySelector}</HighlightMatch>
+          </styled.span>
+        </Tooltip>
       </styled.div>
     </styled.code>
   );
@@ -1153,6 +1017,22 @@ const EditableValue = (props: EditableValueProps) => {
     });
   };
 
+  const overrideValue = async (update: string) => {
+    if (!update || update === propValue) return;
+
+    const { hasUpdated, computedValue } = await updateValue(update);
+    if (hasUpdated) {
+      setOverride(update, computedValue);
+    }
+  };
+
+  const revert = async () => {
+    const hasUpdated = await updateValue(matchValue);
+    if (hasUpdated) {
+      setOverride(null, null);
+    }
+  };
+
   return (
     <Editable.Root
       key={key}
@@ -1163,13 +1043,8 @@ const EditableValue = (props: EditableValueProps) => {
       activationMode="focus"
       placeholder={propValue}
       // var(--webkit-css-property-color,var(--sys-color-token-property-special))
-      onValueCommit={async (update) => {
-        if (!update.value || update.value === propValue) return;
-
-        const { hasUpdated, computedValue } = await updateValue(update.value);
-        if (hasUpdated) {
-          setOverride(update.value, computedValue);
-        }
+      onValueCommit={(update) => {
+        overrideValue(update.value);
       }}
     >
       <Editable.Area ref={ref}>
@@ -1211,11 +1086,8 @@ const EditableValue = (props: EditableValueProps) => {
               opacity: { base: 0.5, _hover: 1 },
               cursor: "pointer",
             })}
-            onClick={async () => {
-              const hasUpdated = await updateValue(matchValue);
-              if (hasUpdated) {
-                setOverride(null, null);
-              }
+            onClick={() => {
+              revert();
             }}
           />
         </Tooltip>
@@ -1284,10 +1156,255 @@ const HighlightMatch = ({
   );
 };
 
-const EditableContext = (props: {
-  children: (editable: EditableCtx) => ReactNode;
-}) => {
-  const { children } = props;
-  const ctx = useEditableContext();
-  return children(ctx);
+interface InsertInlineRowProps {
+  inspected: InspectResult;
+  overrides: OverrideMap | null;
+  setOverrides: Dispatch<SetStateAction<OverrideMap | null>>;
+}
+
+const InsertInlineRow = (props: InsertInlineRowProps) => {
+  const { inspected, overrides, setOverrides } = props;
+  // const [state, setState] = useState<"idle"| "editing-key" | "editing-value">("idle");
+
+  useEffect(() => {
+    return trackInteractOutside(() => dom.getEditableKey(), {
+      onInteractOutside: () => {
+        console.log("outside key");
+      },
+    });
+  }, []);
+
+  useEffect(() => {
+    return trackInteractOutside(() => dom.getEditableValue(), {
+      onInteractOutside: () => {
+        console.log("outside value");
+      },
+    });
+  }, []);
+
+  return (
+    <Flex
+      direction="column"
+      gap="2px"
+      px="4px"
+      id="inline-styles"
+      className="group"
+      onClick={(e) => {
+        const container = e.currentTarget as HTMLElement;
+        const editable = dom.getEditableKey();
+        const target = e.target as HTMLElement;
+
+        // Toggle when already editing
+        if (container.dataset.editing != null && target !== editable) {
+          // console.log("exit editing123");
+          // delete container.dataset.editing;
+          return;
+        }
+
+        if (!target.dataset.declaration) {
+          const declaration = target.closest("[data-declaration]");
+          console.log(target, declaration);
+          if (declaration) return;
+        }
+
+        console.log("start editing", target.closest("[data-declaration]"));
+
+        // Add data-editing otherwise
+        container.dataset.editing = "prop";
+
+        // Then focus the contentEditable span
+        if (!editable) return;
+        editable.focus();
+      }}
+    >
+      <Flex alignItems="center" id="editable-row" tabIndex={0}>
+        <styled.span
+          fontWeight="500"
+          color="var(--sys-color-state-disabled, rgba(227, 227, 227, 0.38))"
+          mr="6px"
+        >
+          element.style
+        </styled.span>
+        <styled.span
+          fontWeight="600"
+          color="var(--sys-color-on-surface, rgb(227, 227, 227))"
+        >
+          {"{"}
+        </styled.span>
+      </Flex>
+      <Flex
+        pl="17.5px"
+        pt="1.5px"
+        css={{
+          "&:hover:not(:focus)": {
+            backgroundColor:
+              "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
+          },
+          display: "none",
+          ".group[data-editing] &": { display: "inline-block" },
+        }}
+      >
+        <span
+          id="editable-key"
+          contentEditable="plaintext-only"
+          className={contentEditableStyles}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+
+            const container = dom.getInlineStyleContainer();
+
+            e.preventDefault();
+
+            const editable = e.target as HTMLElement;
+
+            // Empty string, exit editing
+            if (
+              editable.innerText == null ||
+              editable.innerText.trim() === ""
+            ) {
+              delete container.dataset.editing;
+              return;
+            }
+
+            // Otherwise, commit the value & reset the editing state
+            console.log("commit-submit", editable.innerText);
+            container.dataset.editing = "value";
+            const editableValue = dom.getEditableValue();
+            editableValue.focus();
+          }}
+          // onBlur={(e) => {
+          //   const container = dom.getInlineStyleContainer();
+          //   if (!container) return;
+
+          //   console.log("commit-blur", e.target.innerText);
+          //   container.dataset.editing = "value";
+          //   const editableValue = dom.getEditableValue();
+          //   editableValue.focus();
+
+          //   // setInserted((current) => current.concat([]))
+          // }}
+        />
+        <span
+          className={css({
+            display: "inline-block",
+            width: "14px",
+            textDecoration: "inherit",
+            whiteSpace: "pre",
+          })}
+        >
+          {":"}
+        </span>
+        <span
+          tabIndex={0}
+          id="editable-value"
+          contentEditable="plaintext-only"
+          className={contentEditableStyles}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+
+            const container = dom.getInlineStyleContainer();
+
+            e.preventDefault();
+
+            const editable = e.target as HTMLElement;
+
+            // Empty string, exit editing
+            if (
+              editable.innerText == null ||
+              editable.innerText.trim() === ""
+            ) {
+              delete container.dataset.editing;
+              return;
+            }
+
+            // Otherwise, commit the value & reset the editing state
+            console.log("commit-submit", editable.innerText);
+            delete container.dataset.editing;
+            console.log({
+              key: dom.getEditableKey().innerText,
+              value: dom.getEditableValue().innerText,
+            });
+          }}
+          // onBlur={(e) => {
+          //   const container = dom.getInlineStyleContainer();
+          //   if (!container) return;
+
+          //   console.log("commit-blur", e.target.innerText);
+          //   delete container.dataset.editing;
+
+          //   // setInserted((current) => current.concat([]))
+          // }}
+        />
+        <span>;</span>
+      </Flex>
+      {inspected.styleEntries.length ? (
+        <>
+          <styled.div>
+            {inspected.styleEntries.map(([key, value], index) => {
+              return (
+                <Declaration
+                  {...{
+                    key,
+                    index,
+                    prop: key,
+                    matchValue: value,
+                    rule: {
+                      type: "style",
+                      selector: symbols.inlineStyleSelector,
+                      style: { [key]: value },
+                      parentRule: null,
+                      source: symbols.inlineStyleSelector,
+                    },
+                    inspected,
+                    override: overrides?.["style:" + key] ?? null,
+                    setOverride: (value, computed) =>
+                      setOverrides((overrides) => ({
+                        ...overrides,
+                        [overrideKey]: key,
+                        ["style:" + key]:
+                          value != null ? { value, computed } : null,
+                      })),
+                  }}
+                />
+              );
+            })}
+          </styled.div>
+        </>
+      ) : null}
+      <styled.span
+        fontWeight="600"
+        color="var(--sys-color-on-surface, rgb(227, 227, 227))"
+      >
+        {"}"}
+      </styled.span>
+      <styled.hr my="1" opacity="0.2" />
+    </Flex>
+  );
 };
+
+const dom = {
+  getInlineStyleContainer: () =>
+    document.getElementById("inline-styles") as HTMLElement,
+  getEditableRow: () => document.getElementById("editable-row") as HTMLElement,
+  getEditableKey: () => document.getElementById("editable-key") as HTMLElement,
+  getEditableValue: () =>
+    document.getElementById("editable-value") as HTMLElement,
+};
+
+const contentEditableStyles = css({
+  boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
+  backgroundColor: "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+  textOverflow: "clip!important",
+  opacity: "100%!important",
+  margin: "0 -2px -1px",
+  padding: "0 2px 1px",
+  //
+  color: "var(--sys-color-on-surface, #e3e3e3)",
+  textDecoration: "inherit",
+  whiteSpace: "pre",
+  overflowWrap: "break-word",
+
+  _focusVisible: {
+    outline: "none",
+  },
+});
