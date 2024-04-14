@@ -6,7 +6,6 @@ import {
   OnMessageProxy,
   SendMessageProxy,
 } from "./message-typings";
-import { ProtocolMap, ProtocolWithReturn } from "webext-bridge";
 
 const devtools = browser.devtools;
 const inspectedWindow = devtools.inspectedWindow;

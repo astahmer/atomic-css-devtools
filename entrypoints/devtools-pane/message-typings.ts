@@ -20,7 +20,7 @@ export interface MessageMap {
     ReturnType<typeof inspectApi.computePropertyValue>
   >;
   updateStyleRule: DevtoolMessage<
-    UpdateStyleRuleMessage,
+    UpdateStyleRuleMessage & { index: number },
     { hasUpdated: boolean; computedValue: string | null }
   >;
   appendInlineStyle: DevtoolMessage<

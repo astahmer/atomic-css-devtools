@@ -553,25 +553,29 @@ export function SidebarPane() {
                 );
               }
 
-              return Array.from(computed.order).map((key, index) => (
-                <Declaration
-                  {...{
-                    key,
-                    index,
-                    prop: key,
-                    matchValue: computed.styles[key],
-                    rule: computed.ruleByProp[key],
-                    inspected,
-                    override: overrides?.[key] ?? null,
-                    setOverride: (value, computed) =>
-                      setOverrides((overrides) => ({
-                        ...overrides,
-                        [overrideKey]: key,
-                        [key]: value != null ? { value, computed } : null,
-                      })),
-                  }}
-                />
-              ));
+              return (
+                <div className="group">
+                  {Array.from(computed.order).map((key, index) => (
+                    <Declaration
+                      {...{
+                        key,
+                        index,
+                        prop: key,
+                        matchValue: computed.styles[key],
+                        rule: computed.ruleByProp[key],
+                        inspected,
+                        override: overrides?.[key] ?? null,
+                        setOverride: (value, computed) =>
+                          setOverrides((overrides) => ({
+                            ...overrides,
+                            [overrideKey]: key,
+                            [key]: value != null ? { value, computed } : null,
+                          })),
+                      }}
+                    />
+                  ))}
+                </div>
+              );
             })
             .with(true, () => {
               if (groupByMedia) {
@@ -835,13 +839,24 @@ const Declaration = (props: DeclarationProps) => {
         defaultChecked
         className={css({
           ...checkboxStyles,
-          opacity: isTogglableClass ? "1" : "0",
+          opacity: isTogglableClass ? "1" : "0!",
           visibility: "hidden",
           _groupHover: {
             visibility: "visible",
+            opacity: 1,
           },
         })}
+        disabled={!isTogglableClass}
         onChange={async () => {
+          if (rule.selector === symbols.inlineStyleSelector) {
+            return;
+          }
+
+          // We can only toggle atomic classes
+          if (!isTogglableClass) {
+            return;
+          }
+
           const isEnabled = await evaluator.el((el, className) => {
             try {
               return el.classList.toggle(className);
@@ -882,6 +897,7 @@ const Declaration = (props: DeclarationProps) => {
         />
       )}
       <EditableValue
+        index={index}
         prop={prop}
         elementSelector={inspected.selector}
         selector={rule.selector}
@@ -1020,6 +1036,7 @@ const Declaration = (props: DeclarationProps) => {
 };
 
 interface EditableValueProps {
+  index: number;
   /**
    * Selector computed from the inspected element (window.$0 in content script)
    * By traversing the DOM tree until reaching HTML so we can uniquely identify the element
@@ -1047,8 +1064,15 @@ interface EditableValueProps {
 }
 
 const EditableValue = (props: EditableValueProps) => {
-  const { elementSelector, prop, selector, matchValue, override, setOverride } =
-    props;
+  const {
+    index,
+    elementSelector,
+    prop,
+    selector,
+    matchValue,
+    override,
+    setOverride,
+  } = props;
 
   const ref = useRef(null as HTMLDivElement | null);
   const [key, setKey] = useState(0);
@@ -1062,6 +1086,7 @@ const EditableValue = (props: EditableValueProps) => {
       prop: hypenateProperty(prop),
       value: update,
       kind,
+      index,
     });
   };
 

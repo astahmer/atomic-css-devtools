@@ -228,30 +228,20 @@ class InspectAPI {
     }
   }
 
-  updateInlineStyle(element: HTMLElement, prop: string, value: string) {
-    if (element) {
-      element.style.setProperty(prop, value);
-      return true;
-    }
-  }
-
-  appendInlineStyle(
-    element: HTMLElement,
-    prop: string,
-    value: string,
-    afterIndex: number | null
-  ) {
+  updateInlineStyle(params: InlineStyleUpdate & { element: HTMLElement }) {
+    const { element, prop, value, atIndex: afterIndex, mode } = params;
     if (element) {
       // element.style.cssText += `${prop}: ${value};`;
       // will not work, it will only the last property+value declaration for a given property
 
       const cssText = element.getAttribute("style") || "";
-      const updated = this.insertDeclarationInCssText(
+      const updated = this.getUpdatedCssText({
         cssText,
         prop,
         value,
-        afterIndex
-      );
+        atIndex: afterIndex,
+        mode,
+      });
       // but this is fine for some reason
       element.setAttribute("style", updated);
       return true;
@@ -262,12 +252,8 @@ class InspectAPI {
    * insertDeclarationInCssText("color: red; color: blue;", "color", "green", 0)
    * => "color: red; color: green; color: blue;"
    */
-  private insertDeclarationInCssText(
-    cssText: string,
-    prop: string,
-    value: string,
-    afterIndex: number | null
-  ) {
+  private getUpdatedCssText(params: InlineStyleUpdate & { cssText: string }) {
+    const { cssText, prop, value, atIndex: afterIndex, mode } = params;
     const declaration = ` ${prop}: ${value};`;
 
     if (afterIndex === null) {
@@ -444,6 +430,13 @@ class InspectAPI {
     // }
     return styles;
   }
+}
+
+interface InlineStyleUpdate {
+  prop: string;
+  value: string;
+  atIndex: number | null;
+  mode: "insert" | "edit";
 }
 
 const extractVariableName = (value: string) => {

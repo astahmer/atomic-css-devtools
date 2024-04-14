@@ -46,11 +46,13 @@ export default defineContentScript({
           | undefined;
         if (!element) return { hasUpdated: false, computedValue: null };
 
-        hasUpdated = inspectApi.updateInlineStyle(
+        hasUpdated = inspectApi.updateInlineStyle({
           element,
-          message.data.prop,
-          message.data.value
-        );
+          prop: message.data.prop,
+          value: message.data.value,
+          atIndex: message.data.index,
+          mode: "edit",
+        });
       } else {
         hasUpdated = inspectApi.updateStyleRule(
           message.data.selector,
@@ -78,12 +80,13 @@ export default defineContentScript({
         | undefined;
       if (!element) return { hasUpdated: false, computedValue: null };
 
-      const hasUpdated = inspectApi.appendInlineStyle(
+      const hasUpdated = inspectApi.updateInlineStyle({
         element,
-        message.data.prop,
-        message.data.value,
-        message.data.afterIndex
-      );
+        prop: message.data.prop,
+        value: message.data.value,
+        atIndex: message.data.afterIndex,
+        mode: "insert",
+      });
       if (!hasUpdated) return { hasUpdated: false, computedValue: null };
 
       const computedValue = inspectApi.computePropertyValue(
