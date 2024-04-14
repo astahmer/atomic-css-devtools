@@ -24,7 +24,7 @@ export interface MessageMap {
     { hasUpdated: boolean; computedValue: string | null }
   >;
   appendInlineStyle: DevtoolMessage<
-    Omit<UpdateStyleRuleMessage, "kind">,
+    Omit<UpdateStyleRuleMessage, "kind"> & { afterIndex: number | null },
     { hasUpdated: boolean; computedValue: string | null }
   >;
   resize: DevtoolMessage<WindowEnv, void>;

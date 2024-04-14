@@ -41,3 +41,30 @@ test("works without space", () => {
       ]
     `);
 });
+
+test("works with multiple comma", () => {
+  expect(
+    inlineStylesToObject(
+      " color: green;; color: blue; color: red; color: yellow;"
+    )
+  ).toMatchInlineSnapshot(`
+    [
+      [
+        "color",
+        "green",
+      ],
+      [
+        "color",
+        "blue",
+      ],
+      [
+        "color",
+        "red",
+      ],
+      [
+        "color",
+        "yellow",
+      ],
+    ]
+  `);
+});

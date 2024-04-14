@@ -235,18 +235,48 @@ class InspectAPI {
     }
   }
 
-  appendInlineStyle(element: HTMLElement, prop: string, value: string) {
+  appendInlineStyle(
+    element: HTMLElement,
+    prop: string,
+    value: string,
+    afterIndex: number | null
+  ) {
     if (element) {
       // element.style.cssText += `${prop}: ${value};`;
       // will not work, it will only the last property+value declaration for a given property
 
+      const cssText = element.getAttribute("style") || "";
+      const updated = this.insertDeclarationInCssText(
+        cssText,
+        prop,
+        value,
+        afterIndex
+      );
       // but this is fine for some reason
-      const cssText =
-        (element.getAttribute("style") || "") + ` ${prop}: ${value};`;
-      console.log("cssText", cssText);
-      element.setAttribute("style", cssText);
+      element.setAttribute("style", updated);
       return true;
     }
+  }
+
+  /**
+   * insertDeclarationInCssText("color: red; color: blue;", "color", "green", 0)
+   * => "color: red; color: green; color: blue;"
+   */
+  private insertDeclarationInCssText(
+    cssText: string,
+    prop: string,
+    value: string,
+    afterIndex: number | null
+  ) {
+    const declaration = ` ${prop}: ${value};`;
+
+    if (afterIndex === null) {
+      return cssText + declaration;
+    }
+
+    const split = cssText.split(";").filter(Boolean);
+    split.splice(afterIndex + 1, 0, declaration);
+    return split.filter(Boolean).join(";") + ";";
   }
 
   private createSerializer() {

@@ -81,7 +81,8 @@ export default defineContentScript({
       const hasUpdated = inspectApi.appendInlineStyle(
         element,
         message.data.prop,
-        message.data.value
+        message.data.value,
+        message.data.afterIndex
       );
       if (!hasUpdated) return { hasUpdated: false, computedValue: null };
 

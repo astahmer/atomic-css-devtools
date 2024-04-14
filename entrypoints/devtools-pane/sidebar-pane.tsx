@@ -1282,15 +1282,14 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
       value: editableValue.innerText,
     };
 
-    // TODO insert in correct order based on clickedRowIndex
     return evaluator.api
       .appendInlineStyle({
         selector: inspected.selector,
         prop: declaration.prop,
         value: declaration.value,
+        afterIndex: clickedRowIndex ?? null,
       })
       .then(({ hasUpdated, computedValue }) => {
-        console.log({ hasUpdated, computedValue });
         if (hasUpdated) {
           const { prop, value } = declaration;
           const key = `style:${prop}`;
@@ -1305,7 +1304,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
 
           setState("key");
           refresh().then(() => {
-            setClickedRowIndex(inspected.styleDeclarationEntries.length);
+            setClickedRowIndex((clickedRowIndex ?? -1) + 1);
           });
         }
       });
