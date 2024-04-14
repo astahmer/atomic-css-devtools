@@ -168,6 +168,10 @@ export function SidebarPane() {
     );
   }
 
+  // TODO when (next) inline style is disabled (line-through), remove disabled state from previous ones (which are now applied)
+  // TODO line-through on atomic class row declaration when there's an inline style declaration for the same prop (unless atomic has important, unless style has important)
+  // TODO remove inline style line when backspace + no value
+
   // TODO compactCss inline style
   // TODO color picker on color previews ?
 
@@ -1425,7 +1429,6 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
             node.focus();
           }
         }}
-        // TODO cancelEditing on backspace + value.trim() === ""
         onKeyDown={(e) => {
           const state = getState();
           if (state !== "key") return;
@@ -1434,6 +1437,10 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
 
           if (e.key === "Escape") {
             return cancelEditing("escaping key");
+          }
+
+          if (e.key === "Backspace" && !editable.innerText) {
+            return cancelEditing("backspace on empty key");
           }
 
           if (!["Enter", "Tab"].includes(e.key)) return;
@@ -1480,6 +1487,27 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
 
           if (e.key === "Escape") {
             cancelEditing("escaping value");
+            return;
+          }
+
+          // Return to key editing when backspace is pressed on an empty value
+          if (e.key === "Backspace" && !editable.innerText) {
+            e.preventDefault();
+            setState("key");
+
+            const editableKey = dom.getEditableKey();
+            editableKey.focus();
+
+            const element = editableKey;
+            const range = document.createRange();
+            range.selectNodeContents(element);
+
+            const selection = window.getSelection();
+            if (selection) {
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
+
             return;
           }
 

@@ -36,3 +36,7 @@ body {
 .platform-mac ::-webkit-scrollbar-thumb:hover {
   background-color: #939393;
 }
+
+::selection {
+  background-color: var(--sys-color-tonal-container, rgb(0, 74, 119));
+}
