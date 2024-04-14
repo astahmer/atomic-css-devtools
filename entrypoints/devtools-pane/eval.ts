@@ -1,6 +1,11 @@
 import { onMessage, sendMessage } from "webext-bridge/devtools";
 import { InspectResult } from "./inspect-api";
-import { SendMessageProxy } from "./message-typings";
+import {
+  DevtoolMessage,
+  MessageMap,
+  OnMessageProxy,
+  SendMessageProxy,
+} from "./message-typings";
 import { ProtocolMap, ProtocolWithReturn } from "webext-bridge";
 
 const devtools = browser.devtools;
@@ -129,21 +134,33 @@ const inspect = async () => {
 };
 
 const api = new Proxy<SendMessageProxy>({} as any, {
-  get<T extends keyof ProtocolMap>(_target: any, propKey: T) {
+  get<T extends keyof MessageMap>(_target: any, propKey: T) {
     const context = "content-script";
     const tabId = null as any;
 
     return async function (arg?: any) {
       // console.log(`Calling ${propKey} with payload`, arg);
       return sendMessage(propKey, arg, { context, tabId });
-    } as ProtocolMap[T] extends ProtocolWithReturn<infer Data, infer Return>
+    } as MessageMap[T] extends DevtoolMessage<infer Data, infer Return>
       ? (args: Data) => Promise<Return>
-      : (args: ProtocolMap[T]) => Promise<void>;
+      : (args: MessageMap[T]) => Promise<void>;
+  },
+});
+
+const onMsg = new Proxy<OnMessageProxy>({} as any, {
+  get<T extends keyof MessageMap>(_target: any, propKey: T) {
+    return function (cb: (message: any) => any) {
+      return onMessage(propKey, (message) => {
+        console.log(`Received ${propKey} with message`, message.data);
+        return cb(message);
+      });
+    };
   },
 });
 
 export const evaluator = {
   api,
+  onMsg,
   fn: evalFn,
   el: evalEl,
   copy: (valueToCopy: string) => {
@@ -170,11 +187,6 @@ export const evaluator = {
         handleSelectionChanged
       );
     };
-  },
-  onWindowResize: (cb: (env: InspectResult["env"]) => void) => {
-    onMessage("resize", (message) => {
-      cb(message.data);
-    });
   },
   onPaneShown: (cb: () => void) => {
     onMessage("devtools-shown", () => {

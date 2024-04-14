@@ -1,3 +1,4 @@
+import { inlineStylesToObject } from "./lib/astish";
 import { getComputedLayer, getLayer, getMedia } from "./lib/rules";
 
 class InspectAPI {
@@ -14,7 +15,8 @@ class InspectAPI {
     const matches = this.getMatchingRules(element);
     const cssVars = this.getCssVars(element);
     const layersOrder = matches.layerOrders.flat();
-    const styleEntries = this.getInlineStyleProps(element);
+    const styleEntries = this.getAppliedStyleEntries(element);
+    console.log("styleEntries", styleEntries);
 
     const serialized = {
       selector,
@@ -31,9 +33,13 @@ class InspectAPI {
         Array.from(computed).map((key) => [key, computed.getPropertyValue(key)])
       ),
       /**
-       * This contains the ordered `style` attributes as an array of [property, value] pairs
+       * This contains only the applied `style` attributes as an array of [property, value] pairs
        */
       styleEntries,
+      /**
+       * This contains all declared `style` attributes as an array of [property, value] pairs
+       */
+      styleDeclarationEntries: this.getStyleAttributeEntries(element),
       /**
        * This contains the `style` attribute resulting object applied on the element
        */
@@ -94,8 +100,12 @@ class InspectAPI {
     } as WindowEnv;
   }
 
-  //  TODO getAttribue + astish instead
-  getInlineStyleProps(element: HTMLElement) {
+  /**
+   * Returns all style entries applied to an element
+   * @example
+   * `color: red; color: blue;` -> `["color", "blue"]`
+   */
+  getAppliedStyleEntries(element: HTMLElement) {
     if (!element.style.cssText) return [];
     // console.log(element.style);
     return Array.from(element.style).map((key) => {
@@ -106,6 +116,17 @@ class InspectAPI {
           (important ? " !" + important : ""),
       ];
     });
+  }
+
+  /**
+   * Returns all style entries applied to an element
+   * @example
+   * `color: red; color: blue;` -> `[["color", "red"], ["color", "blue"]]`
+   */
+  getStyleAttributeEntries(element: HTMLElement) {
+    if (!element.style.cssText) return [];
+    // console.log(element.style);
+    return inlineStylesToObject(element.getAttribute("style") ?? "");
   }
 
   /**
@@ -216,7 +237,14 @@ class InspectAPI {
 
   appendInlineStyle(element: HTMLElement, prop: string, value: string) {
     if (element) {
-      element.style.cssText += `${prop}: ${value};`;
+      // element.style.cssText += `${prop}: ${value};`;
+      // will not work, it will only the last property+value declaration for a given property
+
+      // but this is fine for some reason
+      const cssText =
+        (element.getAttribute("style") || "") + ` ${prop}: ${value};`;
+      console.log("cssText", cssText);
+      element.setAttribute("style", cssText);
       return true;
     }
   }

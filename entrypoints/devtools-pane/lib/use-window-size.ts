@@ -6,8 +6,8 @@ export const useWindowSize = () => {
   const [windowSize, setWindowSize] = useState({} as InspectResult["env"]);
 
   useEffect(() => {
-    return evaluator.onWindowResize((ev) => {
-      setWindowSize(ev);
+    return evaluator.onMsg.resize((ev) => {
+      setWindowSize(ev.data);
     });
   }, []);
 

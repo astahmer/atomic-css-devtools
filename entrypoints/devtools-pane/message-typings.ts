@@ -28,6 +28,7 @@ export interface MessageMap {
     { hasUpdated: boolean; computedValue: string | null }
   >;
   resize: DevtoolMessage<WindowEnv, void>;
+  focus: DevtoolMessage<null, void>;
 }
 
 //

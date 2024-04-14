@@ -1,8 +1,10 @@
 import { onMessage, sendMessage } from "webext-bridge/content-script";
 import { WindowEnv, inspectApi } from "./devtools-pane/inspect-api";
 import type {
+  DevtoolMessage,
   MessageMap,
   OnMessageProxy,
+  SendMessageProxy,
 } from "./devtools-pane/message-typings";
 
 export default defineContentScript({
@@ -19,8 +21,11 @@ export default defineContentScript({
         deviceHeightPx: window.screen.height,
         dppx: window.devicePixelRatio,
       };
-      // @ts-expect-error
-      sendMessage("resize", env, { context: "devtools" });
+      api.resize(env);
+    });
+
+    window.addEventListener("focus", () => {
+      api.focus(null);
     });
 
     onMsg.inspectElement((message) => {
@@ -93,11 +98,25 @@ export default defineContentScript({
   },
 });
 
+const api = new Proxy<SendMessageProxy>({} as any, {
+  get<T extends keyof MessageMap>(_target: any, propKey: T) {
+    const context = "devtools";
+    const tabId = null as any;
+
+    return async function (arg?: any) {
+      // console.log(`Calling ${propKey} with payload`, arg);
+      return sendMessage(propKey, arg, { context, tabId });
+    } as MessageMap[T] extends DevtoolMessage<infer Data, infer Return>
+      ? (args: Data) => Promise<Return>
+      : (args: MessageMap[T]) => Promise<void>;
+  },
+});
+
 const onMsg = new Proxy<OnMessageProxy>({} as any, {
   get<T extends keyof MessageMap>(_target: any, propKey: T) {
     return function (cb: (message: any) => any) {
       return onMessage(propKey, (message) => {
-        console.log(`Received ${propKey} with message`, message.data);
+        // console.log(`Received ${propKey} with message`, message.data);
         return cb(message);
       });
     };
