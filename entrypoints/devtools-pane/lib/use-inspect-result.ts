@@ -40,5 +40,10 @@ export const useInspectedResult = (
     run();
   }, [result?.env.location]);
 
-  return result;
+  const refresh = async () => {
+    const update = await evaluator.inspectElement();
+    setResult(update ?? null);
+  };
+
+  return { inspected: result, refresh };
 };

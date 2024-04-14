@@ -13,10 +13,13 @@ import {
   EyeOffIcon,
   LayersIcon,
   MonitorSmartphone,
+  RefreshCwIcon,
   Undo2,
 } from "lucide-react";
 import {
   Dispatch,
+  Fragment,
+  MouseEvent,
   ReactNode,
   SetStateAction,
   createContext,
@@ -55,19 +58,19 @@ import { unescapeString } from "./lib/unescape-string";
 import { useInspectedResult } from "./lib/use-inspect-result";
 import { useUndoRedo } from "./lib/use-undo-redo";
 import { useWindowSize } from "./lib/use-window-size";
+import { flushSync } from "react-dom";
 
 type Override = { value: string; computed: string | null };
 type OverrideMap = Record<string, Override | null>;
 type HistoryState = {
   overrides: OverrideMap | null;
-  inserted: Array<string[]>;
 };
 
 const FilterContext = createContext<string | null>(null);
 const overrideKey = Symbol("overrideKey");
 
 export function SidebarPane() {
-  const inspected = useInspectedResult(() => {
+  const { inspected, refresh } = useInspectedResult(() => {
     api.reset();
   });
   const size = useWindowSize();
@@ -83,13 +86,6 @@ export function SidebarPane() {
   const api = useUndoRedo({} as HistoryState);
   const overrides = api.state.overrides;
   const setOverrides = api.setNestedState("overrides");
-
-  // const inserted = api.state.inserted;
-  // const setInserted = api.setNestedState("inserted");
-
-  // useEffect(() => {
-  //   return trackInteractOutside(dom.)
-  // }, [])
 
   // TODO
   // useHotkeys(
@@ -175,11 +171,17 @@ export function SidebarPane() {
   // TODO fix toggle inline style
   // TODO compactCss inline style
   // TODO add a button to add a new declaration (inline style)
-  // TODO fix computed value (in atomic classes) when using inline stykes
-  // TODO use an array for added inline styles position, so we can control the insertion order (editing mode + contentEditable right before/after a specific declaration) (and add multiple ones with the same name)
+  // TODO color picker on color previews ?
+
+  // TODO add title attribute when possible
   // TODO copy raw value on click sur computed value hint
-  // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
   // TODO light mode
+  // TODO blue highlight (in the browser host website) for every elements matching the hovered selector
+  // TODO (firefox) button to highlight all elements matching a selector (like the previous one but click to toggle it)
+  // TODO (firefox) red filter input on no results
+  // TODO (firefox) green highlight (like git diff) on overrides (added inline styles/updated values)
+
+  // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
   // TODO right click (context menu) + mimic the one from `Styles` devtools panel (Copy all declarations as CSS/JS, Copy all changes, Revert to default, etc)
   // TODO edit component styles (match all elements with the same classes as the current element, allow updating class names that are part of the class list)
   // TODO EditableValue for property name
@@ -192,12 +194,7 @@ export function SidebarPane() {
   // TODO only atomic (filter out rules with more than 1 declaration)
   // TODO revert all to default (by group = only in X layer/media/or all if not grouped?)
   // TODO collapse/expand all
-  // TODO blue highlight (in the browser host website) for every elements matching the hovered selector
-  // TODO (firefox) button to highlight all elements matching a selector (like the previous one but click to toggle it)
   // TODO save preferences in idb ?
-  // TODO (firefox) red filter input on no results
-  // TODO (firefox) green highlight (like git diff) on overrides (added inline styles/updated values)
-  // TODO add title attribute when possible
   // TODO when adding inlien styles, add warning icon + line-though if property name is invalid ?
   // TODO when property value is using a known number/amount unit, use NumberInput + Scrubber
   // TODO when property value is using a known number/amount unit, allow shortcuts to change the step (0.1, 1, 10, 100)
@@ -308,6 +305,36 @@ export function SidebarPane() {
               }
             >
               <BugIcon
+                className={css({
+                  w: "16px",
+                  h: "16px",
+                  opacity: { base: 0.8, _groupHover: 1 },
+                })}
+              />
+            </styled.button>
+          </Tooltip>
+          <Tooltip content="Refresh">
+            <styled.button
+              ml="auto"
+              className="group"
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              px="4px"
+              height="26px"
+              minWidth="28px"
+              _hover={{
+                backgroundColor:
+                  "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+              }}
+              _selected={{
+                backgroundColor:
+                  "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+                color: "var(--icon-toggled, rgb(124, 172, 248))",
+              }}
+              onClick={() => refresh()}
+            >
+              <RefreshCwIcon
                 className={css({
                   w: "16px",
                   h: "16px",
@@ -491,6 +518,7 @@ export function SidebarPane() {
           {/* TODO toggle inline style */}
           <InsertInlineRow
             inspected={inspected}
+            refresh={refresh}
             overrides={overrides}
             setOverrides={setOverrides}
           />
@@ -744,6 +772,7 @@ interface DeclarationProps
   matchValue: string;
   rule: MatchedStyleRule;
   inspected: InspectResult;
+  disabled?: boolean;
 }
 
 const checkboxStyles = css.raw({
@@ -757,13 +786,30 @@ const checkboxStyles = css.raw({
 const checkbox = css(checkboxStyles);
 
 const Declaration = (props: DeclarationProps) => {
-  const { prop, index, matchValue, rule, inspected, override, setOverride } =
-    props;
+  const {
+    prop,
+    index,
+    matchValue,
+    rule,
+    inspected,
+    override,
+    setOverride,
+    disabled,
+  } = props;
 
-  const computedValue =
-    override?.computed ||
-    inspected.computedStyle[prop] ||
-    inspected.cssVars[matchValue];
+  let computedValue = override?.computed;
+
+  if (matchValue.includes("var(--") && inspected.cssVars[matchValue]) {
+    computedValue = inspected.cssVars[matchValue];
+  }
+
+  if (computedValue == null) {
+    if (rule.selector === symbols.inlineStyleSelector) {
+      computedValue = matchValue;
+    } else {
+      computedValue = inspected.computedStyle[prop];
+    }
+  }
 
   const prettySelector = unescapeString(rule.selector);
   const isTogglableClass =
@@ -780,8 +826,8 @@ const Declaration = (props: DeclarationProps) => {
       mr="2"
       // var(--sys-color-state-hover-on-subtle)
       _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
-      textDecoration={enabled ? "none" : "line-through !important"}
-      data-declaration=""
+      textDecoration={enabled && !disabled ? "none" : "line-through !important"}
+      data-declaration={index}
     >
       <input
         id={id}
@@ -1049,7 +1095,10 @@ const EditableValue = (props: EditableValueProps) => {
         overrideValue(update.value);
       }}
     >
-      <Editable.Area ref={ref}>
+      <Editable.Area
+        ref={ref}
+        // className={css({ display: "flex!", alignItems: "center" })}
+      >
         <Editable.Input
           defaultValue={propValue}
           onBlur={() => setKey((key) => key + 1)}
@@ -1107,6 +1156,7 @@ const EditablePreview = () => {
       <HighlightMatch highlight={filter}>
         {ctx.previewProps.children}
       </HighlightMatch>
+      {ctx.isEditing ? null : <span>;</span>}
     </span>
   );
 };
@@ -1160,63 +1210,257 @@ const HighlightMatch = ({
 
 interface InsertInlineRowProps {
   inspected: InspectResult;
+  refresh: () => Promise<void>;
   overrides: OverrideMap | null;
   setOverrides: Dispatch<SetStateAction<OverrideMap | null>>;
 }
 
+type EditingState = "idle" | "key" | "value";
+
+const getState = () =>
+  (dom.getInlineContainer().dataset.editing || "idle") as EditingState;
+
+const setState = (state: EditingState) => {
+  // console.log(
+  //   `setState ${dom.getInlineContainer().dataset.editing} => ${state}`
+  // );
+  if (state === "idle") {
+    delete dom.getInlineContainer().dataset.editing;
+    return;
+  }
+
+  dom.getInlineContainer().dataset.editing = state;
+};
+
 const InsertInlineRow = (props: InsertInlineRowProps) => {
-  const { inspected, overrides, setOverrides } = props;
-  // "idle" | "key" | "value"
-  const getState = () => dom.getInlineContainer().dataset.editing || "idle";
-  const setState = (state: "idle" | "key" | "value") => {
-    console.log(
-      `setState ${dom.getInlineContainer().dataset.editing} => ${state}`
-    );
-    if (state === "idle") {
-      delete dom.getInlineContainer().dataset.editing;
-      return;
+  const { inspected, refresh, overrides, setOverrides } = props;
+
+  const startEditing = (e: MouseEvent, from: "first" | "last") => {
+    // console.log("start-editing", from);
+    const state = getState();
+
+    if (state === "key") {
+      return cancelEditing("already editing key");
     }
 
-    dom.getInlineContainer().dataset.editing = state;
+    if (state === "idle") {
+      const target = e.target as HTMLElement;
+      const declaration = dom.getClosestDeclaration(target);
+      if (declaration && target !== declaration) return;
+
+      const index = declaration?.dataset.declaration
+        ? parseInt(declaration.dataset.declaration)
+        : from === "first"
+          ? -1
+          : inspected.styleDeclarationEntries.length - 1;
+
+      // Needed so that the element is rendered before we can focus it
+      flushSync(() => {
+        setClickedRowIndex(index);
+
+        setState("key");
+      });
+      dom.getEditableKey().focus();
+    }
   };
 
+  const cancelEditing = (reason: string) => {
+    // console.log("cancel-editing", reason);
+    dom.getEditableKey().innerText = "";
+    dom.getEditableValue().innerText = "";
+    delete dom.getInlineContainer().dataset.editing;
+    setState("idle");
+  };
+
+  const commit = () => {
+    const editableValue = dom.getEditableValue();
+    const editableKey = dom.getEditableKey();
+    // console.log("commit", editableValue.innerText);
+
+    const declaration = {
+      prop: editableKey.innerText,
+      value: editableValue.innerText,
+    };
+
+    // TODO insert in correct order based on clickedRowIndex
+    return evaluator.api
+      .appendInlineStyle({
+        selector: inspected.selector,
+        prop: declaration.prop,
+        value: declaration.value,
+      })
+      .then(({ hasUpdated, computedValue }) => {
+        console.log({ hasUpdated, computedValue });
+        if (hasUpdated) {
+          const { prop, value } = declaration;
+          const key = `style:${prop}`;
+          setOverrides((overrides) => ({
+            ...overrides,
+            [overrideKey]: key,
+            [key]: value != null ? { value, computed: computedValue } : null,
+          }));
+
+          editableValue.innerText = "";
+          editableKey.innerText = "";
+
+          setState("key");
+          refresh().then(() => {
+            setClickedRowIndex(inspected.styleDeclarationEntries.length);
+          });
+        }
+      });
+  };
+
+  // When focusing the host website window, cancel editing
+  useEffect(() => {
+    return evaluator.onMsg.focus(() => {
+      cancelEditing("focusing host website");
+    });
+  }, []);
+
+  const [clickedRowIndex, setClickedRowIndex] = useState<number | null>(-1);
+
+  // When clicking outside the editable key while editing it, cancel editing
   useEffect(() => {
     return trackInteractOutside(() => dom.getEditableKey(), {
       exclude: (target) => {
         return dom.getInlineContainer().contains(target);
       },
-      onInteractOutside: (e) => {
+      onInteractOutside: () => {
         const state = dom.getInlineContainer().dataset.editing;
         if (state === "key") {
-          const editable = dom.getEditableKey();
-          if (editable.innerText == null || editable.innerText.trim() === "") {
-            setState("idle");
-            return;
-          }
-
-          console.log("outside key", e);
-          setState("value");
+          cancelEditing("clicking outside key");
         }
       },
     });
-  }, []);
+  }, [clickedRowIndex]);
 
+  // When clicking outside the editable value while editing it, cancel editing if empty, otherwise commit
   useEffect(() => {
     return trackInteractOutside(() => dom.getEditableValue(), {
       onInteractOutside: (e) => {
         const state = dom.getInlineContainer().dataset.editing;
         if (state === "value") {
-          console.log("outside value", e);
-          setState("idle");
+          const editable = e.target as HTMLElement;
+          if (editable.innerText == null || editable.innerText.trim() === "") {
+            cancelEditing("clicking outside value");
+            return;
+          }
 
-          console.log({
-            key: dom.getEditableKey().innerText,
-            value: dom.getEditableValue().innerText,
-          });
+          commit();
         }
       },
     });
-  }, []);
+  }, [clickedRowIndex]);
+
+  const EditableRow = (
+    <Flex
+      className="editable-row"
+      pl="17.5px"
+      pt="1.5px"
+      css={{
+        "&:hover:not(:focus)": {
+          backgroundColor:
+            "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
+        },
+        display: "none",
+        ".group[data-editing] &": { display: "inline-block" },
+      }}
+    >
+      <span
+        id="editable-key"
+        contentEditable="plaintext-only"
+        className={css(contentEditableStyles, {
+          ".group[data-editing=key] &": {
+            boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
+            backgroundColor:
+              "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+          },
+          ".group[data-editing=value] &": {
+            color: "var(--sys-color-token-property-special, rgb(92, 213, 251))",
+          },
+        })}
+        ref={(node) => {
+          // Auto focus the editable key when the row is clicked
+          if (node && getState() === "key") {
+            node.focus();
+          }
+        }}
+        onKeyDown={(e) => {
+          const state = getState();
+          if (state !== "key") return;
+
+          const editable = e.target as HTMLElement;
+
+          if (e.key === "Escape") {
+            return cancelEditing("escaping key");
+          }
+
+          if (!["Enter", "Tab"].includes(e.key)) return;
+
+          e.preventDefault();
+
+          // Empty string, exit editing
+          if (editable.innerText == null || editable.innerText.trim() === "") {
+            return cancelEditing("submitting empty key");
+          }
+
+          // Otherwise, commit the key & move to value editing
+          setState("value");
+
+          const editableValue = dom.getEditableValue();
+          // console.log("commit-key", editableValue);
+          editableValue.focus();
+        }}
+      />
+      <span
+        className={css({
+          display: "inline-block",
+          width: "14px",
+          textDecoration: "inherit",
+          whiteSpace: "pre",
+        })}
+      >
+        {":"}
+      </span>
+      <span
+        tabIndex={0}
+        id="editable-value"
+        contentEditable="plaintext-only"
+        className={css(contentEditableStyles, {
+          ".group[data-editing=value] &": {
+            boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
+            backgroundColor:
+              "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+          },
+        })}
+        onKeyDown={(e) => {
+          const editable = e.target as HTMLElement;
+
+          if (e.key === "Escape") {
+            cancelEditing("escaping value");
+            return;
+          }
+
+          if (!["Enter", "Tab"].includes(e.key)) return;
+
+          e.preventDefault();
+
+          // Empty string, exit editing
+          if (editable.innerText == null || editable.innerText.trim() === "") {
+            cancelEditing("submitting empty value");
+            return;
+          }
+
+          // Otherwise, commit the value & reset the editing state
+          commit();
+        }}
+      />
+      <span>;</span>
+    </Flex>
+  );
+
+  const applied = Object.fromEntries(inspected.styleEntries);
 
   return (
     <Flex
@@ -1226,29 +1470,10 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
       id="inline-styles"
       className="group"
       onClick={(e) => {
-        const target = e.target as HTMLElement;
-        const row = dom.getEditableRow();
-        const state = getState();
-        console.log(target, e.currentTarget, row);
-        const declaration = target.closest("[data-declaration]");
-        // if (target.dataset.declaration && row.contains(target)) return;
-        if (declaration) {
-          return;
-        }
-
-        if (state === "key") {
-          return setState("idle");
-        }
-
-        if (state === "idle") {
-          console.log("setState key");
-          setState("key");
-
-          dom.getEditableKey().focus();
-        }
+        startEditing(e, "first");
       }}
     >
-      <Flex alignItems="center" id="editable-row" tabIndex={0}>
+      <Flex alignItems="center" tabIndex={0}>
         <styled.span
           fontWeight="500"
           color="var(--sys-color-state-disabled, rgba(227, 227, 227, 0.38))"
@@ -1263,166 +1488,56 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
           {"{"}
         </styled.span>
       </Flex>
-      <Flex
-        pl="17.5px"
-        pt="1.5px"
-        css={{
-          "&:hover:not(:focus)": {
-            backgroundColor:
-              "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
-          },
-          display: "none",
-          ".group[data-editing] &": { display: "inline-block" },
-        }}
-      >
-        <span
-          id="editable-key"
-          contentEditable="plaintext-only"
-          className={css(contentEditableStyles, {
-            ".group[data-editing=key] &": {
-              boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
-              backgroundColor:
-                "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
-            },
-            ".group[data-editing=value] &": {
-              color:
-                "var(--sys-color-token-property-special, rgb(92, 213, 251))",
-            },
-          })}
-          onKeyDown={(e) => {
-            const state = getState();
-            console.log({ state }, e.key);
-            if (state !== "key") return;
-            if (e.key !== "Enter") return;
+      {clickedRowIndex === -1 ? EditableRow : null}
+      {inspected.styleDeclarationEntries.length ? (
+        <styled.div>
+          {inspected.styleDeclarationEntries.map(
+            ([prop, value], index, arr) => {
+              const key = `style:${prop}:${value}`;
+              const isAppliedLater = arr
+                .slice(index + 1)
+                .some(([prop2, value2]) => prop2 === prop && value2 === value);
 
-            const container = dom.getInlineContainer();
-
-            e.preventDefault();
-
-            const editable = e.target as HTMLElement;
-
-            // Empty string, exit editing
-            if (
-              editable.innerText == null ||
-              editable.innerText.trim() === ""
-            ) {
-              delete container.dataset.editing;
-              return;
-            }
-
-            // Otherwise, commit the value & reset the editing state
-            console.log("commit-submit-key", editable.innerText);
-            setState("value");
-            const editableValue = dom.getEditableValue();
-            editableValue.focus();
-          }}
-        />
-        <span
-          className={css({
-            display: "inline-block",
-            width: "14px",
-            textDecoration: "inherit",
-            whiteSpace: "pre",
-          })}
-        >
-          {":"}
-        </span>
-        <span
-          tabIndex={0}
-          id="editable-value"
-          contentEditable="plaintext-only"
-          className={css(contentEditableStyles, {
-            ".group[data-editing=value] &": {
-              boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
-              backgroundColor:
-                "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
-            },
-          })}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-
-            const container = dom.getInlineContainer();
-
-            e.preventDefault();
-
-            const editable = e.target as HTMLElement;
-
-            // Empty string, exit editing
-            if (
-              editable.innerText == null ||
-              editable.innerText.trim() === ""
-            ) {
-              delete container.dataset.editing;
-              return;
-            }
-
-            // Otherwise, commit the value & reset the editing state
-            console.log("commit-submit-value", editable.innerText);
-            const declaration = {
-              key: dom.getEditableKey().innerText,
-              value: dom.getEditableValue().innerText,
-            };
-            setState("idle");
-            editable.innerText = "";
-            dom.getEditableKey().innerText = "";
-            evaluator.api
-              .appendInlineStyle({
-                selector: inspected.selector,
-                prop: declaration.key,
-                value: declaration.value,
-              })
-              .then(({ hasUpdated, computedValue }) => {
-                if (hasUpdated) {
-                  const { key, value } = declaration;
-                  setOverrides((overrides) => ({
-                    ...overrides,
-                    [overrideKey]: key,
-                    ["style:" + key]:
-                      value != null ? { value, computed: computedValue } : null,
-                  }));
-                }
-              });
-          }}
-        />
-        <span>;</span>
-      </Flex>
-      {inspected.styleEntries.length ? (
-        <>
-          <styled.div>
-            {inspected.styleEntries.map(([key, value], index) => {
               return (
-                <Declaration
-                  {...{
-                    key,
-                    index,
-                    prop: key,
-                    matchValue: value,
-                    rule: {
-                      type: "style",
-                      selector: symbols.inlineStyleSelector,
-                      style: { [key]: value },
-                      parentRule: null,
-                      source: symbols.inlineStyleSelector,
-                    },
-                    inspected,
-                    override: overrides?.["style:" + key] ?? null,
-                    setOverride: (value, computed) =>
-                      setOverrides((overrides) => ({
-                        ...overrides,
-                        [overrideKey]: key,
-                        ["style:" + key]:
-                          value != null ? { value, computed } : null,
-                      })),
-                  }}
-                />
+                <Fragment key={index}>
+                  <Declaration
+                    {...{
+                      key: prop,
+                      index,
+                      prop: prop,
+                      matchValue: value,
+                      rule: {
+                        type: "style",
+                        selector: symbols.inlineStyleSelector,
+                        style: { [prop]: value },
+                        parentRule: null,
+                        source: symbols.inlineStyleSelector,
+                      },
+                      inspected,
+                      disabled: applied[prop] !== value || isAppliedLater,
+                      override: overrides?.[key] ?? null,
+                      setOverride: (value, computed) =>
+                        setOverrides((overrides) => ({
+                          ...overrides,
+                          [overrideKey]: key,
+                          [key]: value != null ? { value, computed } : null,
+                        })),
+                    }}
+                  />
+                  {index === clickedRowIndex ? EditableRow : null}
+                </Fragment>
               );
-            })}
-          </styled.div>
-        </>
+            }
+          )}
+        </styled.div>
       ) : null}
       <styled.span
         fontWeight="600"
         color="var(--sys-color-on-surface, rgb(227, 227, 227))"
+        onClick={(e) => {
+          e.stopPropagation();
+          startEditing(e, "last");
+        }}
       >
         {"}"}
       </styled.span>
@@ -1434,10 +1549,11 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
 const dom = {
   getInlineContainer: () =>
     document.getElementById("inline-styles") as HTMLElement,
-  getEditableRow: () => document.getElementById("editable-row") as HTMLElement,
   getEditableKey: () => document.getElementById("editable-key") as HTMLElement,
   getEditableValue: () =>
     document.getElementById("editable-value") as HTMLElement,
+  getClosestDeclaration: (element: HTMLElement) =>
+    element.closest("[data-declaration]") as HTMLElement,
 };
 
 const contentEditableStyles = css.raw({
