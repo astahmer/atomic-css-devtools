@@ -6,8 +6,8 @@ class InspectAPI {
    * Inspects an element and returns all matching CSS rules
    * This needs to contain every functions as it will be stringified/evaluated in the browser
    */
-  inspectElement(selector: string) {
-    const element = document.querySelector(selector) as HTMLElement;
+  inspectElement(elementSelector: string) {
+    const element = document.querySelector(elementSelector) as HTMLElement;
     // console.log("inspectElement", { selector }, element);
     if (!element) return;
 
@@ -19,7 +19,7 @@ class InspectAPI {
     console.log("styleEntries", styleEntries);
 
     const serialized = {
-      selector,
+      elementSelector,
       rules: matches.rules,
       layersOrder,
       cssVars,
@@ -229,7 +229,7 @@ class InspectAPI {
   }
 
   updateInlineStyle(params: InlineStyleUpdate & { element: HTMLElement }) {
-    const { element, prop, value, atIndex: afterIndex, mode } = params;
+    const { element, prop, value, atIndex, mode, isCommented } = params;
     if (element) {
       // element.style.cssText += `${prop}: ${value};`;
       // will not work, it will only the last property+value declaration for a given property
@@ -239,8 +239,9 @@ class InspectAPI {
         cssText,
         prop,
         value,
-        atIndex: afterIndex,
+        atIndex,
         mode,
+        isCommented,
       });
       // but this is fine for some reason
       element.setAttribute("style", updated);
@@ -249,19 +250,31 @@ class InspectAPI {
   }
 
   /**
-   * insertDeclarationInCssText("color: red; color: blue;", "color", "green", 0)
+   * getUpdatedCssText("color: red; color: blue;", "color", "green", 0)
    * => "color: red; color: green; color: blue;"
    */
-  private getUpdatedCssText(params: InlineStyleUpdate & { cssText: string }) {
-    const { cssText, prop, value, atIndex: afterIndex, mode } = params;
-    const declaration = ` ${prop}: ${value};`;
+  getUpdatedCssText(params: InlineStyleUpdate & { cssText: string }) {
+    const { cssText, prop, value, atIndex, isCommented, mode } = params;
+    let declaration = ` ${prop}: ${value}`;
+    if (isCommented) {
+      declaration = `/* ${declaration} */`;
+    }
 
-    if (afterIndex === null) {
-      return cssText + declaration;
+    if (atIndex === null) {
+      return cssText + declaration + ";";
     }
 
     const split = cssText.split(";").filter(Boolean);
-    split.splice(afterIndex + 1, 0, declaration);
+
+    if (mode === "insert") {
+      return split
+        .slice(0, atIndex)
+        .concat(declaration)
+        .concat(split.slice(atIndex).concat(""))
+        .join(";");
+    }
+
+    split[atIndex] = declaration;
     return split.filter(Boolean).join(";") + ";";
   }
 
@@ -432,11 +445,12 @@ class InspectAPI {
   }
 }
 
-interface InlineStyleUpdate {
+export interface InlineStyleUpdate {
   prop: string;
   value: string;
   atIndex: number | null;
   mode: "insert" | "edit";
+  isCommented: boolean;
 }
 
 const extractVariableName = (value: string) => {

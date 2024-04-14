@@ -50,7 +50,8 @@ export default defineContentScript({
           element,
           prop: message.data.prop,
           value: message.data.value,
-          atIndex: message.data.index,
+          atIndex: message.data.atIndex,
+          isCommented: message.data.isCommented,
           mode: "edit",
         });
       } else {
@@ -84,7 +85,8 @@ export default defineContentScript({
         element,
         prop: message.data.prop,
         value: message.data.value,
-        atIndex: message.data.afterIndex,
+        atIndex: message.data.atIndex,
+        isCommented: message.data.isCommented,
         mode: "insert",
       });
       if (!hasUpdated) return { hasUpdated: false, computedValue: null };

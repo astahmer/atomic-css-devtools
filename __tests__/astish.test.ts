@@ -68,3 +68,45 @@ test("works with multiple comma", () => {
     ]
   `);
 });
+
+test("extracts commented declarations", () => {
+  expect(
+    inlineStylesToObject(
+      " color: green;; color: blue;/* color: orange; */ color: red; /* color: amber; */color: yellow;/* color: pink; */" //
+    )
+  ).toMatchInlineSnapshot(`
+    [
+      [
+        "color",
+        "green",
+      ],
+      [
+        "color",
+        "blue",
+      ],
+      [
+        "color",
+        "orange",
+        true,
+      ],
+      [
+        "color",
+        "red",
+      ],
+      [
+        "color",
+        "amber",
+        true,
+      ],
+      [
+        "color",
+        "yellow",
+      ],
+      [
+        "color",
+        "pink",
+        true,
+      ],
+    ]
+  `);
+});

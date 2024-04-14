@@ -1,11 +1,9 @@
 import type { Endpoint, ProtocolWithReturn } from "webext-bridge";
-import type { WindowEnv, inspectApi } from "./inspect-api";
+import type { WindowEnv, inspectApi, InlineStyleUpdate } from "./inspect-api";
 
-interface UpdateStyleRuleMessage {
+interface UpdateStyleRuleMessage extends Omit<InlineStyleUpdate, "mode"> {
   selector: string;
-  prop: string;
-  value: string;
-  kind: "cssRule" | "inlineStyle";
+  kind: "cssRule" | "inlineStyle"; // TODO get rid of this, use symbols.inlineStyleSelector instead
 }
 
 export type DevtoolMessage<Data, Return> = { data: Data; return: Return };
@@ -20,11 +18,11 @@ export interface MessageMap {
     ReturnType<typeof inspectApi.computePropertyValue>
   >;
   updateStyleRule: DevtoolMessage<
-    UpdateStyleRuleMessage & { index: number },
+    UpdateStyleRuleMessage,
     { hasUpdated: boolean; computedValue: string | null }
   >;
   appendInlineStyle: DevtoolMessage<
-    Omit<UpdateStyleRuleMessage, "kind"> & { afterIndex: number | null },
+    Omit<UpdateStyleRuleMessage, "kind">,
     { hasUpdated: boolean; computedValue: string | null }
   >;
   resize: DevtoolMessage<WindowEnv, void>;

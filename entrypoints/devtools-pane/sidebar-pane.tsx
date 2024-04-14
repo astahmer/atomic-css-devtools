@@ -168,9 +168,7 @@ export function SidebarPane() {
     );
   }
 
-  // TODO fix toggle inline style
   // TODO compactCss inline style
-  // TODO add a button to add a new declaration (inline style)
   // TODO color picker on color previews ?
 
   // TODO add title attribute when possible
@@ -816,8 +814,9 @@ const Declaration = (props: DeclarationProps) => {
   }
 
   const prettySelector = unescapeString(rule.selector);
-  const isTogglableClass =
-    prettySelector.startsWith(".") && !prettySelector.includes(" ");
+  const isTogglable =
+    rule.selector === symbols.inlineStyleSelector ||
+    (prettySelector.startsWith(".") && !prettySelector.includes(" "));
 
   const [enabled, setEnabled] = useState(true);
   const id = useId();
@@ -836,24 +835,38 @@ const Declaration = (props: DeclarationProps) => {
       <input
         id={id}
         type="checkbox"
-        defaultChecked
+        checked={enabled}
         className={css({
           ...checkboxStyles,
-          opacity: isTogglableClass ? "1" : "0!",
+          opacity: isTogglable ? "1" : "0!",
           visibility: "hidden",
           _groupHover: {
             visibility: "visible",
             opacity: 1,
           },
         })}
-        disabled={!isTogglableClass}
-        onChange={async () => {
+        disabled={!isTogglable}
+        onChange={async (e) => {
           if (rule.selector === symbols.inlineStyleSelector) {
+            const enabled = e.target.checked;
+            const result = await evaluator.api.updateStyleRule({
+              selector: inspected.elementSelector,
+              prop: prop,
+              value: matchValue,
+              kind: "inlineStyle",
+              atIndex: index + 1,
+              isCommented: !enabled,
+            });
+
+            if (result.hasUpdated) {
+              setEnabled(enabled);
+            }
+
             return;
           }
 
           // We can only toggle atomic classes
-          if (!isTogglableClass) {
+          if (!isTogglable) {
             return;
           }
 
@@ -899,7 +912,7 @@ const Declaration = (props: DeclarationProps) => {
       <EditableValue
         index={index}
         prop={prop}
-        elementSelector={inspected.selector}
+        elementSelector={inspected.elementSelector}
         selector={rule.selector}
         matchValue={matchValue}
         override={override}
@@ -1086,7 +1099,8 @@ const EditableValue = (props: EditableValueProps) => {
       prop: hypenateProperty(prop),
       value: update,
       kind,
-      index,
+      atIndex: index + 1,
+      isCommented: false,
     });
   };
 
@@ -1261,7 +1275,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
   const { inspected, refresh, overrides, setOverrides } = props;
 
   const startEditing = (e: MouseEvent, from: "first" | "last") => {
-    // console.log("start-editing", from);
+    console.log("start-editing", from);
     const state = getState();
 
     if (state === "key") {
@@ -1290,7 +1304,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
   };
 
   const cancelEditing = (reason: string) => {
-    // console.log("cancel-editing", reason);
+    console.log("cancel-editing", reason);
     dom.getEditableKey().innerText = "";
     dom.getEditableValue().innerText = "";
     delete dom.getInlineContainer().dataset.editing;
@@ -1300,7 +1314,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
   const commit = () => {
     const editableValue = dom.getEditableValue();
     const editableKey = dom.getEditableKey();
-    // console.log("commit", editableValue.innerText);
+    console.log("commit", editableValue.innerText);
 
     const declaration = {
       prop: editableKey.innerText,
@@ -1309,29 +1323,30 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
 
     return evaluator.api
       .appendInlineStyle({
-        selector: inspected.selector,
+        selector: inspected.elementSelector,
         prop: declaration.prop,
         value: declaration.value,
-        afterIndex: clickedRowIndex ?? null,
+        atIndex: clickedRowIndex === null ? null : clickedRowIndex + 1,
+        isCommented: false,
       })
       .then(({ hasUpdated, computedValue }) => {
-        if (hasUpdated) {
-          const { prop, value } = declaration;
-          const key = `style:${prop}`;
-          setOverrides((overrides) => ({
-            ...overrides,
-            [overrideKey]: key,
-            [key]: value != null ? { value, computed: computedValue } : null,
-          }));
+        if (!hasUpdated) return cancelEditing("no update");
 
-          editableValue.innerText = "";
-          editableKey.innerText = "";
+        const { prop, value } = declaration;
+        const key = `style:${prop}`;
+        setOverrides((overrides) => ({
+          ...overrides,
+          [overrideKey]: key,
+          [key]: value != null ? { value, computed: computedValue } : null,
+        }));
 
-          setState("key");
-          refresh().then(() => {
-            setClickedRowIndex((clickedRowIndex ?? -1) + 1);
-          });
-        }
+        editableValue.innerText = "";
+        editableKey.innerText = "";
+
+        setState("key");
+        refresh().then(() => {
+          setClickedRowIndex((clickedRowIndex ?? -1) + 1);
+        });
       });
   };
 
@@ -1410,6 +1425,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
             node.focus();
           }
         }}
+        // TODO cancelEditing on backspace + value.trim() === ""
         onKeyDown={(e) => {
           const state = getState();
           if (state !== "key") return;
@@ -1458,6 +1474,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
               "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
           },
         })}
+        // TODO setState("key") + focus on backspace + value.trim() === ""
         onKeyDown={(e) => {
           const editable = e.target as HTMLElement;
 
