@@ -8,6 +8,7 @@ import {
 import { camelCaseProperty, esc } from "@pandacss/shared";
 import { trackInteractOutside } from "@zag-js/interact-outside";
 import {
+  BoxSelectIcon,
   BugIcon,
   Eye,
   EyeOffIcon,
@@ -20,6 +21,7 @@ import {
   Dispatch,
   Fragment,
   MouseEvent,
+  PropsWithChildren,
   ReactNode,
   SetStateAction,
   createContext,
@@ -40,7 +42,7 @@ import {
   Wrap,
   styled,
 } from "../../styled-system/jsx";
-import { flex, hstack } from "../../styled-system/patterns";
+import { cq, flex, hstack } from "../../styled-system/patterns";
 import { SystemStyleObject } from "../../styled-system/types";
 import CrossCircleFilled from "./components/cross-circle-filled.svg";
 import { Tooltip } from "./components/tooltip";
@@ -67,6 +69,7 @@ type HistoryState = {
 };
 
 const FilterContext = createContext<string | null>(null);
+const ShowSelectorContext = createContext<boolean>(true);
 const overrideKey = Symbol("overrideKey");
 
 export function SidebarPane() {
@@ -110,7 +113,17 @@ export function SidebarPane() {
   const [groupByLayer, setGroupByLayer] = useState(false);
   const [groupByMedia, setGroupByMedia] = useState(false);
   const [visibleLayersState, setVisibleLayers] = useState<string[]>([]);
+
   const [filter, setFilter] = useState("");
+  const [showSelector, setShowSelector] = useState(true);
+
+  const Providers = (props: PropsWithChildren) => (
+    <ShowSelectorContext.Provider value={showSelector}>
+      <FilterContext.Provider value={filter}>
+        {props.children}
+      </FilterContext.Provider>
+    </ShowSelectorContext.Provider>
+  );
 
   // Add platform class to apply targeted styles
   useEffect(() => {
@@ -168,6 +181,7 @@ export function SidebarPane() {
     );
   }
 
+  // TODO inspected element in iframe (storybook)
   // TODO when (next) inline style is disabled (line-through), remove disabled state from previous ones (which are now applied)
   // TODO line-through on atomic class row declaration when there's an inline style declaration for the same prop (unless atomic has important, unless style has important)
   // TODO remove inline style line when backspace + no value
@@ -209,7 +223,7 @@ export function SidebarPane() {
     visibleLayers[0]! === symbols.implicitOuterLayer;
 
   return (
-    <FilterContext.Provider value={filter}>
+    <Providers>
       <Collapsible.Root
         open={groupByLayer || groupByMedia}
         className={css({
@@ -344,6 +358,40 @@ export function SidebarPane() {
                 })}
               />
             </styled.button>
+          </Tooltip>
+          <Tooltip content="Show selectors">
+            <Collapsible.Trigger asChild>
+              <styled.button
+                aria-selected={showSelector}
+                className="group"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                px="4px"
+                height="26px"
+                minWidth="28px"
+                _hover={{
+                  backgroundColor:
+                    "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+                }}
+                _selected={{
+                  backgroundColor:
+                    "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+                  color: "var(--icon-toggled, rgb(124, 172, 248))",
+                }}
+                onClick={() => {
+                  setShowSelector((current) => !current);
+                }}
+              >
+                <BoxSelectIcon
+                  className={css({
+                    w: "16px",
+                    h: "16px",
+                    opacity: { base: 0.8, _groupHover: 1 },
+                  })}
+                />
+              </styled.button>
+            </Collapsible.Trigger>
           </Tooltip>
           <Tooltip content="Group elements by @layer">
             <Collapsible.Trigger asChild>
@@ -509,7 +557,11 @@ export function SidebarPane() {
       </Collapsible.Root>
 
       <styled.hr opacity="0.2" />
-      <Stack py="2px" fontFamily="sans-serif">
+      <Stack
+        py="2px"
+        fontFamily="sans-serif"
+        className={cq({ name: "rules", type: "inline-size" })}
+      >
         <Flex
           direction="column"
           textStyle="sm"
@@ -678,7 +730,7 @@ export function SidebarPane() {
           )}
         </Flex>
       </Stack>
-    </FilterContext.Provider>
+    </Providers>
   );
 }
 
@@ -825,6 +877,7 @@ const Declaration = (props: DeclarationProps) => {
   const [enabled, setEnabled] = useState(true);
   const id = useId();
   const filter = useContext(FilterContext);
+  const showSelector = useContext(ShowSelectorContext);
 
   return (
     <styled.code
@@ -999,55 +1052,63 @@ const Declaration = (props: DeclarationProps) => {
           </Portal>
         </TooltipPrimitive.Root>
       )}
-      <styled.div ml="auto" display="flex" gap="2">
-        <Tooltip
-          positioning={{ placement: "left" }}
-          content={
-            <>
-              {rule.layer && (
-                <HighlightMatch highlight={filter}>
-                  {`@layer ${rule.layer} \n\n `}
+      {showSelector && (
+        <styled.div
+          ml="auto"
+          gap="2"
+          className={css({ display: "none", "@/md": { display: "flex" } })}
+        >
+          <Tooltip
+            positioning={{ placement: "left" }}
+            content={
+              <>
+                {rule.layer && (
+                  <HighlightMatch highlight={filter}>
+                    {`@layer ${rule.layer} \n\n `}
+                  </HighlightMatch>
+                )}
+                {rule.media && (
+                  <HighlightMatch highlight={filter} css={{ ml: "2" }}>
+                    {`@media ${rule.media} \n\n `}
+                  </HighlightMatch>
+                )}
+                <HighlightMatch
+                  highlight={filter}
+                  css={{ ml: rule.media || rule.layer ? "4" : "0" }}
+                >
+                  {prettySelector}
                 </HighlightMatch>
-              )}
-              {rule.media && (
-                <HighlightMatch highlight={filter} css={{ ml: "2" }}>
-                  {`@media ${rule.media} \n\n `}
-                </HighlightMatch>
-              )}
-              <HighlightMatch
-                highlight={filter}
-                css={{ ml: rule.media || rule.layer ? "4" : "0" }}
-              >
+                {rule.media && <styled.span ml="2">{"}"}</styled.span>}
+                {rule.layer && <span>{"}"}</span>}
+                <styled.span mt="4">{rule.source}</styled.span>
+              </>
+            }
+          >
+            <styled.span
+              maxWidth={{
+                base: "150px",
+                sm: "200px",
+                md: "300px",
+              }}
+              textOverflow="ellipsis"
+              overflow="hidden"
+              whiteSpace="nowrap"
+              opacity="0.7"
+              // cursor="pointer"
+              textDecoration={{
+                _hover: "underline",
+              }}
+              onClick={async () => {
+                await evaluator.copy(prettySelector);
+              }}
+            >
+              <HighlightMatch highlight={filter}>
                 {prettySelector}
               </HighlightMatch>
-              {rule.media && <styled.span ml="2">{"}"}</styled.span>}
-              {rule.layer && <span>{"}"}</span>}
-              <styled.span mt="4">{rule.source}</styled.span>
-            </>
-          }
-        >
-          <styled.span
-            maxWidth={{
-              base: "150px",
-              sm: "200px",
-              md: "300px",
-            }}
-            textOverflow="ellipsis"
-            overflow="hidden"
-            whiteSpace="nowrap"
-            opacity="0.7"
-            // cursor="pointer"
-            textDecoration={{
-              _hover: "underline",
-            }}
-            onClick={async () => {
-              await evaluator.copy(prettySelector);
-            }}
-          >
-            <HighlightMatch highlight={filter}>{prettySelector}</HighlightMatch>
-          </styled.span>
-        </Tooltip>
-      </styled.div>
+            </styled.span>
+          </Tooltip>
+        </styled.div>
+      )}
     </styled.code>
   );
 };
