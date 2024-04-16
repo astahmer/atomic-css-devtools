@@ -2,7 +2,7 @@
   "name": "atomic-css-devtools",
   "description": "manifest.json description",
   "private": true,
-  "version": "0.0.3-dev",
+  "version": "0.0.4-dev",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -26,6 +26,7 @@
     "@park-ui/cli": "^0.6.0",
     "@webext-core/messaging": "^1.4.0",
     "@webext-core/proxy-service": "^1.2.0",
+    "@xstate/store": "^0.0.3",
     "@zag-js/interact-outside": "^0.45.0",
     "lucide-react": "^0.365.0",
     "media-query-fns": "^2.0.0",

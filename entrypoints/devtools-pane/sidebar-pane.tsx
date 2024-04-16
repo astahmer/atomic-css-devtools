@@ -61,6 +61,8 @@ import { useInspectedResult } from "./lib/use-inspect-result";
 import { useUndoRedo } from "./lib/use-undo-redo";
 import { useWindowSize } from "./lib/use-window-size";
 import { flushSync } from "react-dom";
+import { createStore } from "@xstate/store";
+import { useSelector } from "@xstate/store/react";
 
 type Override = { value: string; computed: string | null };
 type OverrideMap = Record<string, Override | null>;
@@ -68,9 +70,39 @@ type HistoryState = {
   overrides: OverrideMap | null;
 };
 
-const FilterContext = createContext<string | null>(null);
-const ShowSelectorContext = createContext<boolean>(true);
 const overrideKey = Symbol("overrideKey");
+
+const store = createStore(
+  {
+    filter: "",
+    showSelector: true,
+    groupByLayer: false,
+    groupByMedia: false,
+    visibleLayers: [] as string[],
+    visibleLayersState: [] as string[],
+  },
+  {
+    setFilter: {
+      filter: (_ctx, event: { filter: string }) => event.filter,
+    },
+    setShowSelector: {
+      showSelector: (_ctx, event: { showSelector: boolean }) =>
+        event.showSelector,
+    },
+    setGroupByLayer: {
+      groupByLayer: (_ctx, event: { groupByLayer: boolean }) =>
+        event.groupByLayer,
+    },
+    setGroupByMedia: {
+      groupByMedia: (_ctx, event: { groupByMedia: boolean }) =>
+        event.groupByMedia,
+    },
+    setVisibleLayers: {
+      visibleLayers: (_ctx, event: { visibleLayers: string[] }) =>
+        event.visibleLayers,
+    },
+  }
+);
 
 export function SidebarPane() {
   const { inspected, refresh } = useInspectedResult(() => {
@@ -110,20 +142,19 @@ export function SidebarPane() {
   //   []
   // );
 
-  const [groupByLayer, setGroupByLayer] = useState(false);
-  const [groupByMedia, setGroupByMedia] = useState(false);
-  const [visibleLayersState, setVisibleLayers] = useState<string[]>([]);
-
-  const [filter, setFilter] = useState("");
-  const [showSelector, setShowSelector] = useState(true);
-
-  const Providers = (props: PropsWithChildren) => (
-    <ShowSelectorContext.Provider value={showSelector}>
-      <FilterContext.Provider value={filter}>
-        {props.children}
-      </FilterContext.Provider>
-    </ShowSelectorContext.Provider>
+  const groupByLayer = useSelector(
+    store,
+    (state) => state.context.groupByLayer
   );
+  const groupByMedia = useSelector(
+    store,
+    (state) => state.context.groupByMedia
+  );
+  const visibleLayersState = useSelector(
+    store,
+    (state) => state.context.visibleLayers
+  );
+  const filter = useSelector(store, (state) => state.context.filter);
 
   // Add platform class to apply targeted styles
   useEffect(() => {
@@ -167,7 +198,7 @@ export function SidebarPane() {
       prevLocation.current !== inspected?.env.location &&
       availableLayers.length
     ) {
-      setVisibleLayers(availableLayers);
+      store.send({ type: "setVisibleLayers", visibleLayers: availableLayers });
     }
   }, [inspected?.env.location, visibleLayers.length, inspected?.layersOrder]);
 
@@ -225,7 +256,7 @@ export function SidebarPane() {
     visibleLayers[0]! === symbols.implicitOuterLayer;
 
   return (
-    <Providers>
+    <>
       <Collapsible.Root
         open={groupByLayer || groupByMedia}
         className={css({
@@ -240,234 +271,7 @@ export function SidebarPane() {
           flexDirection: "column",
         })}
       >
-        <Flex alignItems="center" position="relative" zIndex="2" px="5px">
-          <styled.div position="relative" flex="1">
-            <styled.input
-              mt="1px"
-              placeholder="Filter"
-              w="100%"
-              overflow="hidden"
-              whiteSpace="nowrap"
-              backgroundColor="var(--sys-color-state-hover-on-subtle, rgb(40, 40, 40))"
-              border="1px solid var(--sys-color-neutral-outline, rgb(117, 117, 117))"
-              h="19px"
-              padding="4px 3px 3px"
-              borderRadius="4px"
-              css={{
-                color: "var(--sys-color-on-surface, #e3e3e3)",
-                _placeholder: {
-                  color: "var(--sys-color-token-subtle, rgb(143, 143, 143))",
-                },
-                "&:hover:not(:focus)": {
-                  backgroundColor:
-                    "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
-                },
-                _focusVisible: {
-                  outline: "1px solid rgb(153, 200, 255)",
-                  border: "1px solid transparent",
-                  outlineColor: "rgb(153, 200, 255)",
-                },
-              }}
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            />
-            {filter && (
-              <span
-                className={css({
-                  w: "16px",
-                  h: "16px",
-                  position: "absolute",
-                  right: "0",
-                  top: "2px",
-                  opacity: { base: "0.7", _hover: "1" },
-                  backgroundColor: "var(--icon-default, rgb(199, 199, 199))",
-                })}
-                style={{
-                  mask: `url(${CrossCircleFilled}) center / contain no-repeat`,
-                }}
-                onClick={() => setFilter("")}
-              />
-            )}
-          </styled.div>
-          <Tooltip content="Log inspected element">
-            <styled.button
-              ml="auto"
-              className="group"
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              px="4px"
-              height="26px"
-              minWidth="28px"
-              _hover={{
-                backgroundColor:
-                  "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-              }}
-              _selected={{
-                backgroundColor:
-                  "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-                color: "var(--icon-toggled, rgb(124, 172, 248))",
-              }}
-              onClick={() =>
-                console.log(
-                  inspected,
-                  {
-                    groupByMedia,
-                    groupByLayer,
-                    visibleLayers,
-                    visibleLayersState,
-                  },
-                  computed,
-                  api.state
-                )
-              }
-            >
-              <BugIcon
-                className={css({
-                  w: "16px",
-                  h: "16px",
-                  opacity: { base: 0.8, _groupHover: 1 },
-                })}
-              />
-            </styled.button>
-          </Tooltip>
-          <Tooltip content="Refresh">
-            <styled.button
-              ml="auto"
-              className="group"
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              px="4px"
-              height="26px"
-              minWidth="28px"
-              _hover={{
-                backgroundColor:
-                  "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-              }}
-              _selected={{
-                backgroundColor:
-                  "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-                color: "var(--icon-toggled, rgb(124, 172, 248))",
-              }}
-              onClick={() => refresh()}
-            >
-              <RefreshCwIcon
-                className={css({
-                  w: "16px",
-                  h: "16px",
-                  opacity: { base: 0.8, _groupHover: 1 },
-                })}
-              />
-            </styled.button>
-          </Tooltip>
-          <Tooltip content="Show selectors">
-            <Collapsible.Trigger asChild>
-              <styled.button
-                aria-selected={showSelector}
-                className="group"
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-                px="4px"
-                height="26px"
-                minWidth="28px"
-                _hover={{
-                  backgroundColor:
-                    "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-                }}
-                _selected={{
-                  backgroundColor:
-                    "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-                  color: "var(--icon-toggled, rgb(124, 172, 248))",
-                }}
-                onClick={() => {
-                  setShowSelector((current) => !current);
-                }}
-              >
-                <BoxSelectIcon
-                  className={css({
-                    w: "16px",
-                    h: "16px",
-                    opacity: { base: 0.8, _groupHover: 1 },
-                  })}
-                />
-              </styled.button>
-            </Collapsible.Trigger>
-          </Tooltip>
-          <Tooltip content="Group elements by @layer">
-            <Collapsible.Trigger asChild>
-              <styled.button
-                aria-selected={groupByLayer}
-                className="group"
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-                px="4px"
-                height="26px"
-                minWidth="28px"
-                _hover={{
-                  backgroundColor:
-                    "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-                }}
-                _selected={{
-                  backgroundColor:
-                    "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-                  color: "var(--icon-toggled, rgb(124, 172, 248))",
-                }}
-                onClick={() => {
-                  const update = !groupByLayer;
-                  if (update) {
-                    setVisibleLayers(Array.from(computed.rulesByLayer.keys()));
-                  }
-
-                  setGroupByLayer(update);
-                }}
-              >
-                <LayersIcon
-                  className={css({
-                    w: "16px",
-                    h: "16px",
-                    opacity: { base: 0.8, _groupHover: 1 },
-                  })}
-                />
-              </styled.button>
-            </Collapsible.Trigger>
-          </Tooltip>
-          <Tooltip content="Group elements by @media">
-            <styled.button
-              aria-selected={groupByMedia}
-              className="group"
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              px="4px"
-              mr="2px"
-              height="26px"
-              minWidth="28px"
-              _hover={{
-                backgroundColor:
-                  "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-              }}
-              _selected={{
-                backgroundColor:
-                  "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-                color: "var(--icon-toggled, rgb(124, 172, 248))",
-              }}
-              onClick={() => {
-                setGroupByMedia((current) => !current);
-              }}
-            >
-              <MonitorSmartphone
-                className={css({
-                  w: "16px",
-                  h: "16px",
-                  opacity: { base: 0.8, _groupHover: 1 },
-                })}
-              />
-            </styled.button>
-          </Tooltip>
-        </Flex>
+        <Toolbar inspected={inspected} refresh={refresh} computed={computed} />
         <Collapsible.Content
           className={css({
             px: "3px",
@@ -498,11 +302,12 @@ export function SidebarPane() {
                       layer === symbols.implicitOuterLayer
                     }
                     onChange={(e) =>
-                      setVisibleLayers(
-                        e.target.checked
+                      store.send({
+                        type: "setVisibleLayers",
+                        visibleLayers: e.target.checked
                           ? [...visibleLayers, layer]
-                          : visibleLayers.filter((l) => l !== layer)
-                      )
+                          : visibleLayers.filter((l) => l !== layer),
+                      })
                     }
                   />
                   <label htmlFor={"layer-" + layer}>
@@ -519,7 +324,10 @@ export function SidebarPane() {
                   hstack({ gap: "4px", cursor: "pointer" })
                 )}
                 onClick={() =>
-                  setVisibleLayers(Array.from(computed.rulesByLayer.keys()))
+                  store.send({
+                    type: "setVisibleLayers",
+                    visibleLayers: Array.from(computed.rulesByLayer.keys()),
+                  })
                 }
               >
                 <Eye
@@ -541,7 +349,12 @@ export function SidebarPane() {
                     opacity: hasNoLayers ? "0.5" : undefined,
                   })
                 )}
-                onClick={() => setVisibleLayers([symbols.implicitOuterLayer])}
+                onClick={() =>
+                  store.send({
+                    type: "setVisibleLayers",
+                    visibleLayers: [symbols.implicitOuterLayer],
+                  })
+                }
                 disabled={hasNoLayers}
               >
                 <EyeOffIcon
@@ -732,9 +545,282 @@ export function SidebarPane() {
           )}
         </Flex>
       </Stack>
-    </Providers>
+    </>
   );
 }
+
+interface ToolbarProps {
+  inspected: InspectResult | null;
+  refresh: () => Promise<void>;
+  computed: ReturnType<typeof computeStyles>;
+}
+
+const Toolbar = (props: ToolbarProps) => {
+  const { inspected, refresh, computed } = props;
+  const filter = useSelector(store, (state) => state.context.filter);
+  const showSelector = useSelector(
+    store,
+    (state) => state.context.showSelector
+  );
+  const groupByLayer = useSelector(
+    store,
+    (state) => state.context.groupByLayer
+  );
+  const groupByMedia = useSelector(
+    store,
+    (state) => state.context.groupByMedia
+  );
+  const visibleLayers = useSelector(
+    store,
+    (state) => state.context.visibleLayers
+  );
+  const visibleLayersState = useSelector(
+    store,
+    (state) => state.context.visibleLayers
+  );
+
+  return (
+    <Flex alignItems="center" position="relative" zIndex="2" px="5px">
+      <styled.div position="relative" flex="1">
+        <styled.input
+          mt="1px"
+          placeholder="Filter"
+          w="100%"
+          overflow="hidden"
+          whiteSpace="nowrap"
+          backgroundColor="var(--sys-color-state-hover-on-subtle, rgb(40, 40, 40))"
+          border="1px solid var(--sys-color-neutral-outline, rgb(117, 117, 117))"
+          h="19px"
+          padding="4px 3px 3px"
+          borderRadius="4px"
+          css={{
+            color: "var(--sys-color-on-surface, #e3e3e3)",
+            _placeholder: {
+              color: "var(--sys-color-token-subtle, rgb(143, 143, 143))",
+            },
+            "&:hover:not(:focus)": {
+              backgroundColor:
+                "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
+            },
+            _focusVisible: {
+              outline: "1px solid rgb(153, 200, 255)",
+              border: "1px solid transparent",
+              outlineColor: "rgb(153, 200, 255)",
+            },
+          }}
+          value={filter}
+          onChange={(e) =>
+            store.send({ type: "setFilter", filter: e.target.value })
+          }
+        />
+        {filter && (
+          <span
+            className={css({
+              w: "16px",
+              h: "16px",
+              position: "absolute",
+              right: "0",
+              top: "2px",
+              opacity: { base: "0.7", _hover: "1" },
+              backgroundColor: "var(--icon-default, rgb(199, 199, 199))",
+            })}
+            style={{
+              mask: `url(${CrossCircleFilled}) center / contain no-repeat`,
+            }}
+            onClick={() => store.send({ type: "setFilter", filter: "" })}
+          />
+        )}
+      </styled.div>
+      <Tooltip content="Log inspected element">
+        <styled.button
+          ml="auto"
+          className="group"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          px="4px"
+          height="26px"
+          minWidth="28px"
+          _hover={{
+            backgroundColor:
+              "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+          }}
+          _selected={{
+            backgroundColor:
+              "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+            color: "var(--icon-toggled, rgb(124, 172, 248))",
+          }}
+          onClick={() =>
+            console.log(
+              inspected,
+              {
+                groupByMedia,
+                groupByLayer,
+                visibleLayers,
+                visibleLayersState,
+              },
+              computed
+              // api.state
+            )
+          }
+        >
+          <BugIcon
+            className={css({
+              w: "16px",
+              h: "16px",
+              opacity: { base: 0.8, _groupHover: 1 },
+            })}
+          />
+        </styled.button>
+      </Tooltip>
+      <Tooltip content="Refresh">
+        <styled.button
+          ml="auto"
+          className="group"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          px="4px"
+          height="26px"
+          minWidth="28px"
+          _hover={{
+            backgroundColor:
+              "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+          }}
+          _selected={{
+            backgroundColor:
+              "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+            color: "var(--icon-toggled, rgb(124, 172, 248))",
+          }}
+          onClick={() => refresh()}
+        >
+          <RefreshCwIcon
+            className={css({
+              w: "16px",
+              h: "16px",
+              opacity: { base: 0.8, _groupHover: 1 },
+            })}
+          />
+        </styled.button>
+      </Tooltip>
+      <Tooltip content="Show selectors">
+        <Collapsible.Trigger asChild>
+          <styled.button
+            aria-selected={showSelector}
+            className="group"
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            px="4px"
+            height="26px"
+            minWidth="28px"
+            _hover={{
+              backgroundColor:
+                "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+            }}
+            _selected={{
+              backgroundColor:
+                "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+              color: "var(--icon-toggled, rgb(124, 172, 248))",
+            }}
+            onClick={() => {
+              store.send({
+                type: "setShowSelector",
+                showSelector: !showSelector,
+              });
+            }}
+          >
+            <BoxSelectIcon
+              className={css({
+                w: "16px",
+                h: "16px",
+                opacity: { base: 0.8, _groupHover: 1 },
+              })}
+            />
+          </styled.button>
+        </Collapsible.Trigger>
+      </Tooltip>
+      <Tooltip content="Group elements by @layer">
+        <Collapsible.Trigger asChild>
+          <styled.button
+            aria-selected={groupByLayer}
+            className="group"
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            px="4px"
+            height="26px"
+            minWidth="28px"
+            _hover={{
+              backgroundColor:
+                "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+            }}
+            _selected={{
+              backgroundColor:
+                "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+              color: "var(--icon-toggled, rgb(124, 172, 248))",
+            }}
+            onClick={() => {
+              const update = !groupByLayer;
+              if (update) {
+                store.send({
+                  type: "setVisibleLayers",
+                  visibleLayers: Array.from(computed.rulesByLayer.keys()),
+                });
+              }
+
+              store.send({ type: "setGroupByLayer", groupByLayer: update });
+            }}
+          >
+            <LayersIcon
+              className={css({
+                w: "16px",
+                h: "16px",
+                opacity: { base: 0.8, _groupHover: 1 },
+              })}
+            />
+          </styled.button>
+        </Collapsible.Trigger>
+      </Tooltip>
+      <Tooltip content="Group elements by @media">
+        <styled.button
+          aria-selected={groupByMedia}
+          className="group"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          px="4px"
+          mr="2px"
+          height="26px"
+          minWidth="28px"
+          _hover={{
+            backgroundColor:
+              "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+          }}
+          _selected={{
+            backgroundColor:
+              "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+            color: "var(--icon-toggled, rgb(124, 172, 248))",
+          }}
+          onClick={() => {
+            store.send({
+              type: "setGroupByMedia",
+              groupByMedia: !groupByMedia,
+            });
+          }}
+        >
+          <MonitorSmartphone
+            className={css({
+              w: "16px",
+              h: "16px",
+              opacity: { base: 0.8, _groupHover: 1 },
+            })}
+          />
+        </styled.button>
+      </Tooltip>
+    </Flex>
+  );
+};
 
 interface DeclarationGroupProps {
   label: ReactNode;
@@ -878,8 +964,11 @@ const Declaration = (props: DeclarationProps) => {
 
   const [enabled, setEnabled] = useState(true);
   const id = useId();
-  const filter = useContext(FilterContext);
-  const showSelector = useContext(ShowSelectorContext);
+  const filter = useSelector(store, (state) => state.context.filter);
+  const showSelector = useSelector(
+    store,
+    (state) => state.context.showSelector
+  );
 
   return (
     <styled.code
@@ -1260,7 +1349,7 @@ const EditableValue = (props: EditableValueProps) => {
 
 const EditablePreview = () => {
   const ctx = useEditableContext();
-  const filter = useContext(FilterContext);
+  const filter = useSelector(store, (state) => state.context.filter);
 
   return (
     <span {...ctx.previewProps} className={css({ whiteSpace: "normal!" })}>
@@ -1524,7 +1613,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
           setState("value");
 
           const editableValue = dom.getEditableValue();
-          // console.log("commit-key", editableValue);
+          console.log("commit-key", editableValue);
           editableValue.focus();
         }}
       />
