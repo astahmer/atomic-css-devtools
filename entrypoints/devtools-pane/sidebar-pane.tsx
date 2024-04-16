@@ -189,7 +189,8 @@ export function SidebarPane() {
   // TODO compactCss inline style
   // TODO color picker on color previews ?
 
-  // TODO add title attribute when possible
+  // TODO add "link effect" on `var(--here)` with tooltip showing computed value
+  // TODO add title attribute when possible (and there is not tooltip already)
   // TODO copy raw value on click sur computed value hint
   // TODO light mode
   // TODO blue highlight (in the browser host website) for every elements matching the hovered selector
@@ -197,6 +198,7 @@ export function SidebarPane() {
   // TODO (firefox) red filter input on no results
   // TODO (firefox) green highlight (like git diff) on overrides (added inline styles/updated values)
 
+  // TODO exclude list (of selectors), save in idb
   // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
   // TODO right click (context menu) + mimic the one from `Styles` devtools panel (Copy all declarations as CSS/JS, Copy all changes, Revert to default, etc)
   // TODO edit component styles (match all elements with the same classes as the current element, allow updating class names that are part of the class list)
@@ -907,7 +909,7 @@ const Declaration = (props: DeclarationProps) => {
           if (rule.selector === symbols.inlineStyleSelector) {
             const enabled = e.target.checked;
             const result = await evaluator.api.updateStyleRule({
-              selector: inspected.elementSelector,
+              selectors: inspected.elementSelectors,
               prop: prop,
               value: matchValue,
               kind: "inlineStyle",
@@ -969,89 +971,93 @@ const Declaration = (props: DeclarationProps) => {
       <EditableValue
         index={index}
         prop={prop}
-        elementSelector={inspected.elementSelector}
+        elementSelector={inspected.elementSelectors}
         selector={rule.selector}
         matchValue={matchValue}
         override={override}
         setOverride={setOverride}
       />
-      {matchValue.startsWith("var(--") && computedValue && (
-        <TooltipPrimitive.Root
-          openDelay={0}
-          closeDelay={0}
-          positioning={{ placement: "bottom" }}
-          lazyMount
-          // Restore textDecoration on close
-          onOpenChange={(details) => {
-            const tooltipTrigger = document.querySelector(
-              `[data-tooltipid="trigger${prop + index}" ]`
-            ) as HTMLElement;
-            if (!tooltipTrigger) return;
+      {matchValue.startsWith("var(--") &&
+        computedValue &&
+        computedValue !== (override?.value ?? matchValue) && (
+          <TooltipPrimitive.Root
+            openDelay={0}
+            closeDelay={0}
+            positioning={{ placement: "bottom" }}
+            lazyMount
+            // Restore textDecoration on close
+            onOpenChange={(details) => {
+              const tooltipTrigger = document.querySelector(
+                `[data-tooltipid="trigger${prop + index}" ]`
+              ) as HTMLElement;
+              if (!tooltipTrigger) return;
 
-            if (details.open) {
-              const tooltipContent = document.querySelector(
-                `[data-tooltipid="content${prop + index}" ]`
-              )?.parentElement as HTMLElement;
-              if (!tooltipContent) return;
+              if (details.open) {
+                const tooltipContent = document.querySelector(
+                  `[data-tooltipid="content${prop + index}" ]`
+                )?.parentElement as HTMLElement;
+                if (!tooltipContent) return;
 
-              if (!tooltipContent.dataset.overflow) return;
+                if (!tooltipContent.dataset.overflow) return;
 
-              tooltipTrigger.style.textDecoration = "underline";
+                tooltipTrigger.style.textDecoration = "underline";
+                return;
+              }
+
+              tooltipTrigger.style.textDecoration = "";
               return;
-            }
-
-            tooltipTrigger.style.textDecoration = "";
-            return;
-          }}
-        >
-          <TooltipPrimitive.Trigger asChild>
-            <styled.span
-              data-tooltipid={`trigger${prop}` + index}
-              ml="11px"
-              fontSize="10px"
-              opacity="0.7"
-              textOverflow="ellipsis"
-              overflow="hidden"
-              whiteSpace="nowrap"
-              maxWidth="130px"
-            >
-              {computedValue}
-            </styled.span>
-          </TooltipPrimitive.Trigger>
-          <Portal>
-            <TooltipPrimitive.Positioner>
-              <span
-                // Only show tooltip if text is overflowing
-                ref={(node) => {
-                  const tooltipTrigger = document.querySelector(
-                    `[data-tooltipid="trigger${prop + index}" ]`
-                  ) as HTMLElement;
-                  if (!tooltipTrigger) return;
-
-                  const tooltipContent = node as HTMLElement;
-                  if (!tooltipContent) return;
-
-                  if (tooltipTrigger.offsetWidth < tooltipTrigger.scrollWidth) {
-                    // Text is overflowing, add tooltip
-                    tooltipContent.style.display = "";
-                    tooltipContent.dataset.overflow = "true";
-                  } else {
-                    tooltipContent.style.display = "none";
-                  }
-                }}
+            }}
+          >
+            <TooltipPrimitive.Trigger asChild>
+              <styled.span
+                data-tooltipid={`trigger${prop}` + index}
+                ml="11px"
+                fontSize="10px"
+                opacity="0.7"
+                textOverflow="ellipsis"
+                overflow="hidden"
+                whiteSpace="nowrap"
+                maxWidth="130px"
               >
-                <TooltipPrimitive.Content
-                  data-tooltipid={`content${prop}` + index}
-                  maxW="var(--available-width)"
-                  animation="unset"
+                {computedValue}
+              </styled.span>
+            </TooltipPrimitive.Trigger>
+            <Portal>
+              <TooltipPrimitive.Positioner>
+                <span
+                  // Only show tooltip if text is overflowing
+                  ref={(node) => {
+                    const tooltipTrigger = document.querySelector(
+                      `[data-tooltipid="trigger${prop + index}" ]`
+                    ) as HTMLElement;
+                    if (!tooltipTrigger) return;
+
+                    const tooltipContent = node as HTMLElement;
+                    if (!tooltipContent) return;
+
+                    if (
+                      tooltipTrigger.offsetWidth < tooltipTrigger.scrollWidth
+                    ) {
+                      // Text is overflowing, add tooltip
+                      tooltipContent.style.display = "";
+                      tooltipContent.dataset.overflow = "true";
+                    } else {
+                      tooltipContent.style.display = "none";
+                    }
+                  }}
                 >
-                  {computedValue}
-                </TooltipPrimitive.Content>
-              </span>
-            </TooltipPrimitive.Positioner>
-          </Portal>
-        </TooltipPrimitive.Root>
-      )}
+                  <TooltipPrimitive.Content
+                    data-tooltipid={`content${prop}` + index}
+                    maxW="var(--available-width)"
+                    animation="unset"
+                  >
+                    {computedValue}
+                  </TooltipPrimitive.Content>
+                </span>
+              </TooltipPrimitive.Positioner>
+            </Portal>
+          </TooltipPrimitive.Root>
+        )}
       {showSelector && (
         <styled.div
           ml="auto"
@@ -1116,10 +1122,11 @@ const Declaration = (props: DeclarationProps) => {
 interface EditableValueProps {
   index: number;
   /**
-   * Selector computed from the inspected element (window.$0 in content script)
+   * Selectors computed from the inspected element (window.$0 in content script)
    * By traversing the DOM tree until reaching HTML so we can uniquely identify the element
+   * This may have multiple selectors when the inspected element is nested in iframe/shadow roots
    */
-  elementSelector: string;
+  elementSelector: string[];
   /**
    * One of the key of the MatchedStyleRule.style (basically an atomic CSS declaration)
    */
@@ -1160,7 +1167,7 @@ const EditableValue = (props: EditableValueProps) => {
     const kind =
       selector === symbols.inlineStyleSelector ? "inlineStyle" : "cssRule";
     return evaluator.api.updateStyleRule({
-      selector: kind === "inlineStyle" ? elementSelector : selector,
+      selectors: kind === "inlineStyle" ? elementSelector : [selector],
       prop: hypenateProperty(prop),
       value: update,
       kind,
@@ -1388,7 +1395,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
 
     return evaluator.api
       .appendInlineStyle({
-        selector: inspected.elementSelector,
+        selectors: inspected.elementSelectors,
         prop: declaration.prop,
         value: declaration.value,
         atIndex: clickedRowIndex === null ? null : clickedRowIndex + 1,
@@ -1542,7 +1549,6 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
               "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
           },
         })}
-        // TODO setState("key") + focus on backspace + value.trim() === ""
         onKeyDown={(e) => {
           const editable = e.target as HTMLElement;
 

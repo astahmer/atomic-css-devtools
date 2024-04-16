@@ -29,21 +29,19 @@ export default defineContentScript({
     });
 
     onMsg.inspectElement((message) => {
-      const rule = inspectApi.inspectElement(message.data.selector);
+      const rule = inspectApi.inspectElement(message.data.selectors);
       return rule;
     });
     onMsg.computePropertyValue((message) => {
       return inspectApi.computePropertyValue(
-        message.data.selector,
+        message.data.selectors,
         message.data.prop
       );
     });
     onMsg.updateStyleRule((message) => {
       let hasUpdated, computedValue;
       if (message.data.kind === "inlineStyle") {
-        const element = document.querySelector(message.data.selector) as
-          | HTMLElement
-          | undefined;
+        const element = inspectApi.traverseSelectors(message.data.selectors);
         if (!element) return { hasUpdated: false, computedValue: null };
 
         hasUpdated = inspectApi.updateInlineStyle({
@@ -55,16 +53,25 @@ export default defineContentScript({
           mode: "edit",
         });
       } else {
-        hasUpdated = inspectApi.updateStyleRule(
-          message.data.selector,
-          message.data.prop,
-          message.data.value
-        );
+        let doc = document;
+        if (message.data.selectors.length > 1) {
+          const element = inspectApi.traverseSelectors(message.data.selectors);
+          if (!element) return { hasUpdated: false, computedValue: null };
+
+          doc = element.ownerDocument;
+        }
+
+        hasUpdated = inspectApi.updateStyleRule({
+          doc,
+          selector: message.data.selectors[0],
+          prop: message.data.prop,
+          value: message.data.value,
+        });
       }
 
       if (hasUpdated) {
         computedValue = inspectApi.computePropertyValue(
-          message.data.selector,
+          message.data.selectors,
           message.data.prop
         );
       }
@@ -76,9 +83,7 @@ export default defineContentScript({
     });
 
     onMsg.appendInlineStyle((message) => {
-      const element = document.querySelector(message.data.selector) as
-        | HTMLElement
-        | undefined;
+      const element = inspectApi.traverseSelectors(message.data.selectors);
       if (!element) return { hasUpdated: false, computedValue: null };
 
       const hasUpdated = inspectApi.updateInlineStyle({
@@ -92,7 +97,7 @@ export default defineContentScript({
       if (!hasUpdated) return { hasUpdated: false, computedValue: null };
 
       const computedValue = inspectApi.computePropertyValue(
-        message.data.selector,
+        message.data.selectors,
         message.data.prop
       );
 

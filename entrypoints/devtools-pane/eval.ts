@@ -60,76 +60,104 @@ const evalFn = <T extends AnyFunction>(fn: T, ...args: Parameters<T>) => {
 };
 
 const inspect = async () => {
-  const selector = await evalEl((el) => {
+  const selectors = await evalEl((el) => {
     if (!el) return null;
 
-    const rcssescape = /([\0-\x1f\x7f]|^-?\d)|^-$|^-|[^\x80-\uFFFF\w-]/g;
-    const fcssescape = function (ch: string, asCodePoint: string) {
-      if (!asCodePoint) return "\\" + ch;
-      if (ch === "\0") return "\uFFFD";
-      if (ch === "-" && ch.length === 1) return "\\-";
-      return (
-        ch.slice(0, -1) + "\\" + ch.charCodeAt(ch.length - 1).toString(16) + ""
-      );
-    };
-    const esc = (sel: string) => {
-      return (sel + "").replace(rcssescape, fcssescape);
-    };
+    function getElementSelectors(el: Element) {
+      const rcssescape = /([\0-\x1f\x7f]|^-?\d)|^-$|^-|[^\x80-\uFFFF\w-]/g;
+      const fcssescape = function (ch: string, asCodePoint: string) {
+        if (!asCodePoint) return "\\" + ch;
+        if (ch === "\0") return "\uFFFD";
+        if (ch === "-" && ch.length === 1) return "\\-";
+        return (
+          ch.slice(0, -1) +
+          "\\" +
+          ch.charCodeAt(ch.length - 1).toString(16) +
+          ""
+        );
+      };
+      const esc = (sel: string) => {
+        return (sel + "").replace(rcssescape, fcssescape);
+      };
 
-    // Use nth-of-type as a more reliable alternative to nth-child
-    const getNthSelector = (el: HTMLElement) => {
-      const parent = el.parentNode;
-      if (!parent) return;
+      // Use nth-of-type as a more reliable alternative to nth-child
+      const getNthSelector = (el: Element) => {
+        const parent = el.parentNode;
+        if (!parent) return;
 
-      const tag = el.tagName;
-      const siblings = parent.children;
+        const tag = el.tagName;
+        const siblings = parent.children;
 
-      let count = 0;
-      for (let i = 0; i < siblings.length; i++) {
-        if (siblings[i].tagName === tag) {
-          count++;
-          if (siblings[i] === el && count > 1) {
-            return `:nth-of-type(${count})`;
+        let count = 0;
+        for (let i = 0; i < siblings.length; i++) {
+          if (siblings[i].tagName === tag) {
+            count++;
+            if (siblings[i] === el && count > 1) {
+              return `:nth-of-type(${count})`;
+            }
           }
         }
-      }
-    };
+      };
 
-    function getUniqueSelector(element: HTMLElement) {
-      if (element.id) {
-        return "#" + esc(element.id);
-      }
+      function getUniqueSelector(element: Element) {
+        const path = [];
+        let currentElement = element;
 
-      if (["HTML", "BODY"].includes(element.tagName)) {
-        return element.tagName.toLowerCase();
-      }
+        while (currentElement.nodeType === Node.ELEMENT_NODE) {
+          let selector = currentElement.nodeName.toLowerCase();
+          if (currentElement.id) {
+            selector = "#" + esc(currentElement.id);
+            path.unshift(selector);
+            break; // ID is unique enough
+          }
 
-      const path = [];
-      while (element.nodeType === Node.ELEMENT_NODE) {
-        let selector = element.nodeName.toLowerCase();
+          const nth = getNthSelector(currentElement);
+          if (nth) selector += nth;
+          path.unshift(selector);
 
-        if (element.parentNode && element.parentNode.childElementCount > 1) {
-          const nth = getNthSelector(element);
-
-          if (nth) {
-            selector += nth;
+          if (currentElement.parentElement) {
+            currentElement = currentElement.parentElement;
+          } else if ((currentElement as any as ShadowRoot).host) {
+            // Move up through shadow DOM
+            path.unshift("::shadow-root");
+            currentElement = (currentElement as any as ShadowRoot).host;
+          } else {
+            break; // No parent or host means we're at the top
           }
         }
-
-        path.unshift(selector);
-        // @ts-expect-error
-        element = element.parentNode;
+        return path.join(" > ");
       }
 
-      return path.join(" > ");
+      const selectors = [];
+      let currentContext = el;
+      while (currentContext) {
+        selectors.unshift(getUniqueSelector(currentContext));
+
+        const rootNode = currentContext.getRootNode() as ShadowRoot;
+        if (rootNode && rootNode.host) {
+          currentContext = rootNode.host;
+        } else {
+          break;
+        }
+      }
+
+      // Check for being inside an iframe by checking defaultView.frameElement
+      let contextWindow = el.ownerDocument.defaultView;
+      while (contextWindow && contextWindow.frameElement) {
+        selectors.unshift(getUniqueSelector(contextWindow.frameElement));
+        contextWindow = contextWindow.parent as Window & typeof globalThis;
+      }
+
+      return selectors;
     }
 
-    return getUniqueSelector(el);
+    return getElementSelectors(el);
   });
 
-  if (!selector) return null;
+  console.log({ selectors });
+  if (!selectors) return null;
 
-  return api.inspectElement({ selector: selector });
+  return api.inspectElement({ selectors });
 };
 
 const api = new Proxy<SendMessageProxy>({} as any, {

@@ -1,13 +1,80 @@
+import { asserts } from "./asserts";
 import { inlineStylesToObject } from "./lib/astish";
 import { getComputedLayer, getLayer, getMedia } from "./lib/rules";
 
 class InspectAPI {
+  traverseSelectors(selectors: string[]): HTMLElement | null {
+    let currentContext: Document | Element | ShadowRoot = document; // Start at the main document
+
+    for (let i = 0; i < selectors.length; i++) {
+      let selector = selectors[i];
+
+      if (selector === "::shadow-root") {
+        // Assume the next selector targets inside the shadow DOM
+        if (
+          i + 1 < selectors.length &&
+          currentContext instanceof Element &&
+          currentContext.shadowRoot
+        ) {
+          i++; // Move to the next selector which is inside the shadow DOM
+          const shadowRoot = currentContext.shadowRoot as ShadowRoot;
+          if (shadowRoot) {
+            const el = shadowRoot.querySelector(selectors[i]);
+            if (el) {
+              currentContext = el;
+            }
+          }
+        } else {
+          console.error("No shadow root available for selector:", selector);
+          return null;
+        }
+      } else if (asserts.isHTMLIFrameElement(currentContext)) {
+        // If the current context is an iframe, switch to its content document
+        currentContext = currentContext.contentDocument as Document;
+        if (currentContext) {
+          currentContext = currentContext.querySelector(
+            selector
+          ) as HTMLElement;
+        } else {
+          console.error(
+            "Content document not accessible in iframe for selector:",
+            selector
+          );
+          return null;
+        }
+      } else if (
+        currentContext instanceof Document ||
+        currentContext instanceof Element ||
+        (currentContext as any) instanceof ShadowRoot
+      ) {
+        // Regular DOM traversal
+        const found = currentContext.querySelector(selector) as HTMLElement;
+        if (found) {
+          currentContext = found;
+        } else {
+          console.error("Element not found at selector:", selector);
+          return null; // Element not found at this selector, exit early
+        }
+      } else {
+        console.error(
+          "Current context is neither Document, Element, nor ShadowRoot:",
+          currentContext
+        );
+        return null;
+      }
+    }
+
+    return currentContext as HTMLElement; // Return the final element, cast to Element since it's not null
+  }
+
   /**
    * Inspects an element and returns all matching CSS rules
    * This needs to contain every functions as it will be stringified/evaluated in the browser
    */
-  inspectElement(elementSelector: string) {
-    const element = document.querySelector(elementSelector) as HTMLElement;
+  inspectElement(elementSelectors: string[]) {
+    const element = this.traverseSelectors(elementSelectors);
+    console.log({ elementSelectors, element });
+
     // console.log("inspectElement", { selector }, element);
     if (!element) return;
 
@@ -16,10 +83,9 @@ class InspectAPI {
     const cssVars = this.getCssVars(element);
     const layersOrder = matches.layerOrders.flat();
     const styleEntries = this.getAppliedStyleEntries(element);
-    console.log("styleEntries", styleEntries);
 
     const serialized = {
-      elementSelector,
+      elementSelectors,
       rules: matches.rules,
       layersOrder,
       cssVars,
@@ -138,7 +204,7 @@ class InspectAPI {
       CSSStyleRule | CSSMediaRule | CSSLayerBlockRule
     >[] = [];
 
-    for (const sheet of Array.from(document.styleSheets)) {
+    for (const sheet of Array.from(element.ownerDocument.styleSheets)) {
       try {
         if (sheet.cssRules) {
           const rules = Array.from(sheet.cssRules);
@@ -146,7 +212,7 @@ class InspectAPI {
           if (matchingRules.length > 0) {
             matchedRules.push(matchingRules);
             rules.forEach((rule) => {
-              if (rule instanceof CSSLayerStatementRule) {
+              if (asserts.isCSSLayerStatementRule(rule)) {
                 layerOrders.push(Array.from(rule.nameList));
               }
             });
@@ -196,8 +262,8 @@ class InspectAPI {
     return currentValue;
   }
 
-  findStyleRule(selector: string) {
-    const sheets = Array.from(document.styleSheets);
+  findStyleRule(doc: Document, selector: string) {
+    const sheets = Array.from(doc.styleSheets);
     for (const sheet of sheets) {
       if (!sheet.cssRules) return;
 
@@ -212,16 +278,26 @@ class InspectAPI {
     }
   }
 
-  computePropertyValue(selector: string, prop: string) {
-    const element = document.querySelector(selector);
+  computePropertyValue(selectors: string[], prop: string) {
+    const element = this.traverseSelectors(selectors);
     if (!element) return;
 
     const computed = getComputedStyle(element);
     return computed.getPropertyValue(prop);
   }
 
-  updateStyleRule(selector: string, prop: string, value: string) {
-    const styleRule = this.findStyleRule(selector);
+  updateStyleRule({
+    doc,
+    selector,
+    prop,
+    value,
+  }: {
+    doc: Document;
+    selector: string;
+    prop: string;
+    value: string;
+  }) {
+    const styleRule = this.findStyleRule(doc, selector);
     if (styleRule) {
       styleRule.style.setProperty(prop, value);
       return true;
@@ -292,7 +368,7 @@ class InspectAPI {
         return cached;
       }
 
-      if (rule instanceof CSSStyleRule || rule.type === rule.STYLE_RULE) {
+      if (asserts.isCSSStyleRule(rule) || rule.type === rule.STYLE_RULE) {
         const matched: MatchedStyleRule = {
           type: "style",
           source: this.getRuleSource(rule),
@@ -306,7 +382,7 @@ class InspectAPI {
         return matched;
       }
 
-      if (rule instanceof CSSMediaRule) {
+      if (asserts.isCSSMediaRule(rule)) {
         const matched: MatchedMediaRule = {
           type: "media",
           source: this.getRuleSource(rule),
@@ -320,7 +396,7 @@ class InspectAPI {
         return matched;
       }
 
-      if (rule instanceof CSSLayerBlockRule) {
+      if (asserts.isCSSLayerBlockRule(rule)) {
         const matched: MatchedLayerBlockRule = {
           type: "layer",
           source: this.getRuleSource(rule),
@@ -363,12 +439,15 @@ class InspectAPI {
     let matchingRules: Array<CSSStyleRule | CSSMediaRule | CSSLayerBlockRule> =
       [];
 
+    // TODO assert fn with constructor.name + rule.type
     for (const rule of rules) {
-      if (rule instanceof CSSStyleRule && element.matches(rule.selectorText)) {
+      // console.log(rule);
+      // rule.type === 1 && console.log(rule.selectorText);
+      if (asserts.isCSSStyleRule(rule) && element.matches(rule.selectorText)) {
         matchingRules.push(rule);
       } else if (
-        rule instanceof CSSMediaRule ||
-        rule instanceof CSSLayerBlockRule
+        asserts.isCSSMediaRule(rule) ||
+        asserts.isCSSLayerBlockRule(rule)
       ) {
         matchingRules = matchingRules.concat(
           this.findMatchingRules(Array.from(rule.cssRules), element)
@@ -387,15 +466,15 @@ class InspectAPI {
     selector: string
   ): CSSStyleRule | undefined {
     for (const cssRule of rules) {
-      if (cssRule instanceof CSSStyleRule) {
+      if (asserts.isCSSStyleRule(cssRule)) {
         if (cssRule.selectorText === selector) {
           return cssRule;
         }
       }
 
       if (
-        cssRule instanceof CSSMediaRule ||
-        cssRule instanceof CSSLayerBlockRule
+        asserts.isCSSMediaRule(cssRule) ||
+        asserts.isCSSLayerBlockRule(cssRule)
       ) {
         const styleRule = this.findStyleRuleBySelector(
           Array.from(cssRule.cssRules),
@@ -411,7 +490,12 @@ class InspectAPI {
   private getRuleSource(rule: CSSRule): string {
     if (rule.parentStyleSheet?.href) {
       return rule.parentStyleSheet.href;
-    } else if (rule.parentStyleSheet?.ownerNode instanceof HTMLStyleElement) {
+    } else if (asserts.isHTMLStyleElement(rule.parentStyleSheet?.ownerNode)) {
+      const data = rule.parentStyleSheet?.ownerNode.dataset;
+      if (data.viteDevId) {
+        return data.viteDevId;
+      }
+
       return "<style> tag";
     } else {
       return "inline style attribute";
