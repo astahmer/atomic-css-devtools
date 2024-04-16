@@ -21,7 +21,9 @@ const isCSSLayerStatementRule = (
 };
 
 const isElement = (obj: any): obj is Element => {
-  return obj.constructor.name === "Element";
+  return (
+    obj != null && typeof obj === "object" && obj.nodeType === Node.ELEMENT_NODE
+  );
 };
 
 const isHTMLIFrameElement = (obj: any): obj is HTMLIFrameElement => {
@@ -29,7 +31,11 @@ const isHTMLIFrameElement = (obj: any): obj is HTMLIFrameElement => {
 };
 
 const isDocument = (obj: any): obj is Document => {
-  return obj.constructor.name === "Document";
+  return (
+    obj != null &&
+    typeof obj === "object" &&
+    obj.nodeType === Node.DOCUMENT_NODE
+  );
 };
 
 const isShadowRoot = (obj: any): obj is ShadowRoot => {

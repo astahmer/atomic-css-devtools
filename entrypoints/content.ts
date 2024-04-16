@@ -58,7 +58,7 @@ export default defineContentScript({
           const element = inspectApi.traverseSelectors(message.data.selectors);
           if (!element) return { hasUpdated: false, computedValue: null };
 
-          doc = element.ownerDocument;
+          doc = element.getRootNode() as Document;
         }
 
         hasUpdated = inspectApi.updateStyleRule({

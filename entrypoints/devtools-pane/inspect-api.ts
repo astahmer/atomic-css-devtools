@@ -13,7 +13,7 @@ class InspectAPI {
         // Assume the next selector targets inside the shadow DOM
         if (
           i + 1 < selectors.length &&
-          currentContext instanceof Element &&
+          asserts.isElement(currentContext) &&
           currentContext.shadowRoot
         ) {
           i++; // Move to the next selector which is inside the shadow DOM
@@ -25,7 +25,11 @@ class InspectAPI {
             }
           }
         } else {
-          console.error("No shadow root available for selector:", selector);
+          console.error(
+            "No shadow root available for selector:",
+            selector,
+            currentContext
+          );
           return null;
         }
       } else if (asserts.isHTMLIFrameElement(currentContext)) {
@@ -38,21 +42,30 @@ class InspectAPI {
         } else {
           console.error(
             "Content document not accessible in iframe for selector:",
-            selector
+            selector,
+            currentContext
           );
           return null;
         }
       } else if (
-        currentContext instanceof Document ||
-        currentContext instanceof Element ||
-        (currentContext as any) instanceof ShadowRoot
+        asserts.isDocument(currentContext) ||
+        asserts.isElement(currentContext) ||
+        asserts.isShadowRoot(currentContext)
       ) {
+        if (asserts.isElement(currentContext) && currentContext.shadowRoot) {
+          currentContext = currentContext.shadowRoot;
+        }
+
         // Regular DOM traversal
         const found = currentContext.querySelector(selector) as HTMLElement;
         if (found) {
           currentContext = found;
         } else {
-          console.error("Element not found at selector:", selector);
+          console.error(
+            "Element not found at selector:",
+            selector,
+            currentContext
+          );
           return null; // Element not found at this selector, exit early
         }
       } else {
@@ -73,14 +86,14 @@ class InspectAPI {
    */
   inspectElement(elementSelectors: string[]) {
     const element = this.traverseSelectors(elementSelectors);
-    console.log({ elementSelectors, element });
-
-    // console.log("inspectElement", { selector }, element);
+    // console.log({ elementSelectors, element });
     if (!element) return;
 
-    const computed = getComputedStyle(element);
     const matches = this.getMatchingRules(element);
-    const cssVars = this.getCssVars(element);
+    if (!matches) return;
+
+    const computed = getComputedStyle(element);
+    const cssVars = this.getCssVars(matches.rules, element);
     const layersOrder = matches.layerOrders.flat();
     const styleEntries = this.getAppliedStyleEntries(element);
 
@@ -204,7 +217,10 @@ class InspectAPI {
       CSSStyleRule | CSSMediaRule | CSSLayerBlockRule
     >[] = [];
 
-    for (const sheet of Array.from(element.ownerDocument.styleSheets)) {
+    const doc = element.getRootNode() as Document;
+    if (!doc) return;
+
+    for (const sheet of Array.from(doc.styleSheets)) {
       try {
         if (sheet.cssRules) {
           const rules = Array.from(sheet.cssRules);
@@ -416,10 +432,11 @@ class InspectAPI {
     return serialize;
   }
 
-  private getCssVars(element: HTMLElement) {
+  private getCssVars(rules: MatchedStyleRule[], element: HTMLElement) {
     const cssVars = {} as Record<string, string>;
+
     // Store every CSS variable (and their computed values) from matched rules
-    for (const rule of this.getMatchingRules(element).rules) {
+    for (const rule of rules) {
       if (rule.type === "style") {
         for (const property in rule.style) {
           const value = rule.style[property];
@@ -439,10 +456,7 @@ class InspectAPI {
     let matchingRules: Array<CSSStyleRule | CSSMediaRule | CSSLayerBlockRule> =
       [];
 
-    // TODO assert fn with constructor.name + rule.type
     for (const rule of rules) {
-      // console.log(rule);
-      // rule.type === 1 && console.log(rule.selectorText);
       if (asserts.isCSSStyleRule(rule) && element.matches(rule.selectorText)) {
         matchingRules.push(rule);
       } else if (
