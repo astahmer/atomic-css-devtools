@@ -6,6 +6,7 @@ import {
   useEditableContext,
 } from "@ark-ui/react";
 import { camelCaseProperty, esc } from "@pandacss/shared";
+import { useSelector } from "@xstate/store/react";
 import { trackInteractOutside } from "@zag-js/interact-outside";
 import {
   BoxSelectIcon,
@@ -15,23 +16,22 @@ import {
   LayersIcon,
   MonitorSmartphone,
   RefreshCwIcon,
+  ScanEyeIcon,
   Undo2,
 } from "lucide-react";
 import {
   Dispatch,
   Fragment,
   MouseEvent,
-  PropsWithChildren,
   ReactNode,
   SetStateAction,
-  createContext,
-  useContext,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { match } from "ts-pattern";
 import { css, cx } from "../../styled-system/css";
 import {
@@ -50,19 +50,12 @@ import { evaluator } from "./eval";
 import { InspectResult, MatchedStyleRule } from "./inspect-api";
 import { hypenateProperty } from "./lib/hyphenate-proprety";
 import { isColor } from "./lib/is-color";
-import {
-  StyleRuleWithProp,
-  computeStyles,
-  filterRulesByEnv,
-  symbols,
-} from "./lib/rules";
+import { StyleRuleWithProp, computeStyles, symbols } from "./lib/rules";
 import { unescapeString } from "./lib/unescape-string";
 import { useInspectedResult } from "./lib/use-inspect-result";
+import { usePlatformClass } from "./lib/use-platform-class";
 import { useUndoRedo } from "./lib/use-undo-redo";
-import { useWindowSize } from "./lib/use-window-size";
-import { flushSync } from "react-dom";
-import { createStore } from "@xstate/store";
-import { useSelector } from "@xstate/store/react";
+import { store } from "./store";
 
 type Override = { value: string; computed: string | null };
 type OverrideMap = Record<string, Override | null>;
@@ -72,51 +65,48 @@ type HistoryState = {
 
 const overrideKey = Symbol("overrideKey");
 
-const store = createStore(
-  {
-    filter: "",
-    showSelector: true,
-    groupByLayer: false,
-    groupByMedia: false,
-    visibleLayers: [] as string[],
-    visibleLayersState: [] as string[],
-  },
-  {
-    setFilter: {
-      filter: (_ctx, event: { filter: string }) => event.filter,
-    },
-    setShowSelector: {
-      showSelector: (_ctx, event: { showSelector: boolean }) =>
-        event.showSelector,
-    },
-    setGroupByLayer: {
-      groupByLayer: (_ctx, event: { groupByLayer: boolean }) =>
-        event.groupByLayer,
-    },
-    setGroupByMedia: {
-      groupByMedia: (_ctx, event: { groupByMedia: boolean }) =>
-        event.groupByMedia,
-    },
-    setVisibleLayers: {
-      visibleLayers: (_ctx, event: { visibleLayers: string[] }) =>
-        event.visibleLayers,
-    },
-  }
-);
+// TODO when (next) inline style is disabled (line-through), remove disabled state from previous ones (which are now applied)
+// TODO line-through on atomic class row declaration when there's an inline style declaration for the same prop (unless atomic has important, unless style has important)
+// TODO remove inline style line when backspace + no value
+
+// TODO compactCss inline style
+// TODO color picker on color previews ?
+
+// TODO add "link effect" on `var(--here)` with tooltip showing computed value
+// TODO add title attribute when possible (and there is not tooltip already)
+// TODO copy raw value on click sur computed value hint
+// TODO light mode
+// TODO blue highlight (in the browser host website) for every elements matching the hovered selector
+// TODO (firefox) button to highlight all elements matching a selector (like the previous one but click to toggle it)
+// TODO (firefox) red filter input on no results
+// TODO (firefox) green highlight (like git diff) on overrides (added inline styles/updated values)
+
+// TODO exclude list (of selectors), save in idb
+// TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
+// TODO right click (context menu) + mimic the one from `Styles` devtools panel (Copy all declarations as CSS/JS, Copy all changes, Revert to default, etc)
+// TODO right click copy computed styles (of a given DeclarationGroup, ex: every styles in @layer utilities using the computed values as a JS object)
+// TODO edit component styles (match all elements with the same classes as the current element, allow updating class names that are part of the class list)
+// TODO EditableValue for property name
+// TODO allow toggling any declaration (not just atomic) (just use an override)
+// TODO auto-completions for property names
+// TODO auto-completions for CSS vars
+// TODO toggle show source (next to layer/media)
+// TODO toggle btn to remove selectors with `*`
+// TODO CSS vars
+// TODO only atomic (filter out rules with more than 1 declaration)
+// TODO revert all to default (by group = only in X layer/media/or all if not grouped?)
+// TODO collapse/expand all
+// TODO save preferences in idb ?
+// TODO when adding inlien styles, add warning icon + line-though if property name is invalid ?
+// TODO when property value is using a known number/amount unit, use NumberInput + Scrubber
+// TODO when property value is using a known number/amount unit, allow shortcuts to change the step (0.1, 1, 10, 100)
+// TODO (firefox) IF we want to show the property rules stack (like in Computed devtools panel), use firefox styling
+// TODO toggle to sort alphabetically based on property names
 
 export function SidebarPane() {
   const { inspected, refresh } = useInspectedResult(() => {
     api.reset();
   });
-  const size = useWindowSize();
-
-  const rulesMatchingEnv = useMemo(
-    () =>
-      inspected
-        ? filterRulesByEnv(inspected.rules, { ...inspected.env, ...size })
-        : [],
-    [inspected, size]
-  );
 
   const api = useUndoRedo({} as HistoryState);
   const overrides = api.state.overrides;
@@ -142,47 +132,18 @@ export function SidebarPane() {
   //   []
   // );
 
-  const groupByLayer = useSelector(
-    store,
-    (state) => state.context.groupByLayer
-  );
-  const groupByMedia = useSelector(
-    store,
-    (state) => state.context.groupByMedia
-  );
-  const visibleLayersState = useSelector(
-    store,
-    (state) => state.context.visibleLayers
-  );
-  const filter = useSelector(store, (state) => state.context.filter);
+  const groupByLayer = useSelector(store, (s) => s.context.groupByLayer);
+  const groupByMedia = useSelector(store, (s) => s.context.groupByMedia);
+  const selectedLayers = useSelector(store, (s) => s.context.selectedLayers);
+  const isExpanded = useSelector(store, (s) => s.context.isExpanded);
+  const filter = useSelector(store, (s) => s.context.filter);
 
   // Add platform class to apply targeted styles
-  useEffect(() => {
-    browser.runtime.getPlatformInfo().then((info) => {
-      document.body.classList.add("platform-" + info.os);
-    });
-  }, []);
+  usePlatformClass();
 
-  const computed = computeStyles(rulesMatchingEnv, {
-    filter,
-  });
+  const computed = useSelector(store, (s) => s.context.computed);
 
-  // In case the visible layers somehow contain a layer that is not in the inspected document
-  // (most likely after visiting a different website) -> Ignore it
-  // always fallback to showing the implicit layer
-  const visibleLayers = useMemo(() => {
-    if (!inspected?.layersOrder) return [symbols.implicitOuterLayer];
-
-    const visible = visibleLayersState.filter((layer) =>
-      inspected.layersOrder.includes(layer)
-    );
-
-    return visible.length > 0 ? visible : [symbols.implicitOuterLayer];
-  }, [inspected?.layersOrder, visibleLayersState]);
-  const availableLayers = useMemo(
-    () => Array.from(computed.rulesByLayer.keys()),
-    [computed.rulesByLayer]
-  );
+  const availableLayers = useSelector(store, (s) => s.context.availableLayers);
 
   // Keep track of the inspected website location
   const prevLocation = useRef(null as string | null);
@@ -190,17 +151,6 @@ export function SidebarPane() {
     if (!inspected?.env.location) return;
     prevLocation.current = inspected?.env.location;
   }, [inspected?.env.location]);
-
-  // Reset visible layers when visiting a different website that have different @layers
-  useEffect(() => {
-    if (
-      prevLocation.current &&
-      prevLocation.current !== inspected?.env.location &&
-      availableLayers.length
-    ) {
-      store.send({ type: "setVisibleLayers", visibleLayers: availableLayers });
-    }
-  }, [inspected?.env.location, visibleLayers.length, inspected?.layersOrder]);
 
   if (!inspected) {
     return (
@@ -212,53 +162,13 @@ export function SidebarPane() {
     );
   }
 
-  // TODO inspected element in iframe (storybook)
-  // TODO when (next) inline style is disabled (line-through), remove disabled state from previous ones (which are now applied)
-  // TODO line-through on atomic class row declaration when there's an inline style declaration for the same prop (unless atomic has important, unless style has important)
-  // TODO remove inline style line when backspace + no value
-
-  // TODO compactCss inline style
-  // TODO color picker on color previews ?
-
-  // TODO add "link effect" on `var(--here)` with tooltip showing computed value
-  // TODO add title attribute when possible (and there is not tooltip already)
-  // TODO copy raw value on click sur computed value hint
-  // TODO light mode
-  // TODO blue highlight (in the browser host website) for every elements matching the hovered selector
-  // TODO (firefox) button to highlight all elements matching a selector (like the previous one but click to toggle it)
-  // TODO (firefox) red filter input on no results
-  // TODO (firefox) green highlight (like git diff) on overrides (added inline styles/updated values)
-
-  // TODO exclude list (of selectors), save in idb
-  // TODO highlight part of the selector matching current element (`.dark xxx, xxx .dark`) + parseSelectors from panda
-  // TODO right click (context menu) + mimic the one from `Styles` devtools panel (Copy all declarations as CSS/JS, Copy all changes, Revert to default, etc)
-  // TODO edit component styles (match all elements with the same classes as the current element, allow updating class names that are part of the class list)
-  // TODO EditableValue for property name
-  // TODO allow toggling any declaration (not just atomic) (just use an override)
-  // TODO auto-completions for property names
-  // TODO auto-completions for CSS vars
-  // TODO toggle show source (next to layer/media)
-  // TODO toggle btn to remove selectors with `*`
-  // TODO CSS vars
-  // TODO only atomic (filter out rules with more than 1 declaration)
-  // TODO revert all to default (by group = only in X layer/media/or all if not grouped?)
-  // TODO collapse/expand all
-  // TODO save preferences in idb ?
-  // TODO when adding inlien styles, add warning icon + line-though if property name is invalid ?
-  // TODO when property value is using a known number/amount unit, use NumberInput + Scrubber
-  // TODO when property value is using a known number/amount unit, allow shortcuts to change the step (0.1, 1, 10, 100)
-  // TODO (firefox) IF we want to show the property rules stack (like in Computed devtools panel), use firefox styling
-
   const hasMatches =
     computed.order.size > 0 || inspected.styleEntries.length > 0;
-  const hasNoLayers =
-    visibleLayers.length === 1 &&
-    visibleLayers[0]! === symbols.implicitOuterLayer;
 
   return (
     <>
       <Collapsible.Root
-        open={groupByLayer || groupByMedia}
+        open={isExpanded}
         className={css({
           position: "sticky",
           backgroundColor: "#282828", // neutral-15
@@ -275,97 +185,40 @@ export function SidebarPane() {
         <Collapsible.Content
           className={css({
             px: "3px",
-            display: hasMatches ? "none" : undefined,
+            display: !isExpanded ? "none" : undefined,
           })}
         >
-          <styled.div
-            mb="6px"
-            fontSize="12px"
-            color="var(--color-text-secondary, #9aa0a6)"
-          >
-            Toggle layer visibility
-          </styled.div>
           <Wrap gap="2" alignItems="center" mb="2px">
-            {Array.from(computed.rulesByLayer.keys()).map((layer) => {
-              return (
-                <HStack gap="2px" alignItems="center" key={layer}>
-                  <input
-                    key={layer}
-                    type="checkbox"
-                    name="layers"
-                    id={"layer-" + layer}
-                    value={layer}
-                    className={checkbox}
-                    checked={visibleLayersState.includes(layer)}
-                    disabled={
-                      visibleLayers.length === 1 &&
-                      layer === symbols.implicitOuterLayer
-                    }
-                    onChange={(e) =>
-                      store.send({
-                        type: "setVisibleLayers",
-                        visibleLayers: e.target.checked
-                          ? [...visibleLayers, layer]
-                          : visibleLayers.filter((l) => l !== layer),
-                      })
-                    }
-                  />
-                  <label htmlFor={"layer-" + layer}>
-                    {layer}
-                    {""}({computed.rulesByLayer.get(layer)?.length})
-                  </label>
-                </HStack>
-              );
-            })}
-            {visibleLayers.length === 0 ? (
-              <button
-                className={cx(
-                  "group",
-                  hstack({ gap: "4px", cursor: "pointer" })
-                )}
-                onClick={() =>
-                  store.send({
-                    type: "setVisibleLayers",
-                    visibleLayers: Array.from(computed.rulesByLayer.keys()),
-                  })
-                }
-              >
-                <Eye
-                  className={css({
-                    w: "12px",
-                    h: "12px",
-                    opacity: { base: 0.5, _groupHover: 1 },
-                  })}
-                />{" "}
-                Show all
-              </button>
-            ) : (
-              <button
-                className={cx(
-                  hasNoLayers ? undefined : "group",
-                  hstack({
-                    gap: "4px",
-                    cursor: hasNoLayers ? undefined : "pointer",
-                    opacity: hasNoLayers ? "0.5" : undefined,
-                  })
-                )}
-                onClick={() =>
-                  store.send({
-                    type: "setVisibleLayers",
-                    visibleLayers: [symbols.implicitOuterLayer],
-                  })
-                }
-                disabled={hasNoLayers}
-              >
-                <EyeOffIcon
-                  className={css({
-                    w: "12px",
-                    h: "12px",
-                    opacity: { base: 0.5, _groupHover: 1 },
-                  })}
-                />{" "}
-                Hide all
-              </button>
+            {sortArrayByOrder(availableLayers, inspected.layersOrder).map(
+              (layer) => {
+                if (layer === symbols.implicitOuterLayer) return null;
+                return (
+                  <HStack gap="2px" alignItems="center" key={layer}>
+                    <input
+                      key={layer}
+                      type="checkbox"
+                      name="layers"
+                      id={"layer-" + layer}
+                      value={layer}
+                      className={checkbox}
+                      checked={selectedLayers.includes(layer)}
+                      disabled={!availableLayers.length}
+                      onChange={(e) =>
+                        store.send({
+                          type: "setSelectedLayers",
+                          selectedLayers: e.target.checked
+                            ? Array.from(new Set([...selectedLayers, layer]))
+                            : selectedLayers.filter((l) => l !== layer),
+                        })
+                      }
+                    />
+                    <label htmlFor={"layer-" + layer}>
+                      {layer}
+                      {""}({computed.rulesByLayer.get(layer)?.length})
+                    </label>
+                  </HStack>
+                );
+              }
             )}
           </Wrap>
         </Collapsible.Content>
@@ -451,7 +304,7 @@ export function SidebarPane() {
                 return (
                   <Stack>
                     {Array.from(computed.rulesByLayerInMedia.entries())
-                      .filter(([layer]) => visibleLayers.includes(layer))
+                      .filter(([layer]) => availableLayers.includes(layer))
                       .map(([layer, mediaMap]) => {
                         const mediaKeys = Object.keys(mediaMap);
                         return (
@@ -503,7 +356,7 @@ export function SidebarPane() {
               return (
                 <Stack>
                   {Array.from(computed.rulesByLayer.entries())
-                    .filter(([layer]) => visibleLayers.includes(layer))
+                    .filter(([layer]) => selectedLayers.includes(layer))
                     .map(([layer, rules]) => {
                       return (
                         <DeclarationGroup
@@ -549,35 +402,76 @@ export function SidebarPane() {
   );
 }
 
+const sortArrayByOrder = (arr: string[], order: string[]) => {
+  return arr.sort((a, b) => {
+    const aIndex = order.indexOf(a);
+    const bIndex = order.indexOf(b);
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return 1;
+
+    return aIndex - bIndex;
+  });
+};
+
 interface ToolbarProps {
   inspected: InspectResult | null;
   refresh: () => Promise<void>;
   computed: ReturnType<typeof computeStyles>;
 }
 
+const ToolbarButton = styled(
+  "button",
+  {
+    base: {
+      ml: "auto",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      px: "4px",
+      height: "26px",
+      minWidth: "28px",
+      _hover: {
+        backgroundColor:
+          "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+      },
+      _selected: {
+        backgroundColor: "var(--sys-color-neutral-container, rgb(60, 60, 60))",
+        color: "var(--icon-toggled, rgb(124, 172, 248))",
+      },
+      _disabled: {
+        opacity: "0.5",
+        cursor: "not-allowed",
+      },
+    },
+  },
+  { defaultProps: { className: "group" } }
+);
+
+const toolbarIcon = css({
+  w: "16px",
+  h: "16px",
+  opacity: { base: 0.8, _groupHover: 1 },
+});
+
 const Toolbar = (props: ToolbarProps) => {
   const { inspected, refresh, computed } = props;
-  const filter = useSelector(store, (state) => state.context.filter);
-  const showSelector = useSelector(
-    store,
-    (state) => state.context.showSelector
-  );
-  const groupByLayer = useSelector(
-    store,
-    (state) => state.context.groupByLayer
-  );
-  const groupByMedia = useSelector(
-    store,
-    (state) => state.context.groupByMedia
-  );
-  const visibleLayers = useSelector(
-    store,
-    (state) => state.context.visibleLayers
-  );
-  const visibleLayersState = useSelector(
-    store,
-    (state) => state.context.visibleLayers
-  );
+
+  const filter = useSelector(store, (s) => s.context.filter);
+  const showSelector = useSelector(store, (s) => s.context.showSelector);
+  const isExpanded = useSelector(store, (s) => s.context.isExpanded);
+  const groupByLayer = useSelector(store, (s) => s.context.groupByLayer);
+  const groupByMedia = useSelector(store, (s) => s.context.groupByMedia);
+  const availableLayers = useSelector(store, (s) => s.context.availableLayers);
+  const selectedLayers = useSelector(store, (s) => s.context.selectedLayers);
+
+  let isExpandButtonDisabled = false;
+  if (
+    availableLayers.length === 0 ||
+    (availableLayers.length === 1 &&
+      availableLayers[0] === symbols.implicitOuterLayer)
+  ) {
+    isExpandButtonDisabled = true;
+  }
 
   return (
     <Flex alignItems="center" position="relative" zIndex="2" px="5px">
@@ -631,81 +525,84 @@ const Toolbar = (props: ToolbarProps) => {
           />
         )}
       </styled.div>
-      <Tooltip content="Log inspected element">
-        <styled.button
-          ml="auto"
-          className="group"
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          px="4px"
-          height="26px"
-          minWidth="28px"
-          _hover={{
-            backgroundColor:
-              "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-          }}
-          _selected={{
-            backgroundColor:
-              "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-            color: "var(--icon-toggled, rgb(124, 172, 248))",
-          }}
-          onClick={() =>
-            console.log(
-              inspected,
-              {
-                groupByMedia,
-                groupByLayer,
-                visibleLayers,
-                visibleLayersState,
-              },
-              computed
-              // api.state
-            )
-          }
-        >
-          <BugIcon
-            className={css({
-              w: "16px",
-              h: "16px",
-              opacity: { base: 0.8, _groupHover: 1 },
-            })}
-          />
-        </styled.button>
-      </Tooltip>
+      {import.meta.env.DEV && (
+        <Tooltip content="Log inspected element">
+          <ToolbarButton
+            onClick={() =>
+              console.log(
+                inspected,
+                {
+                  groupByMedia,
+                  groupByLayer,
+                  availableLayers,
+                  selectedLayers,
+                },
+                computed
+                // api.state
+              )
+            }
+          >
+            <BugIcon className={toolbarIcon} />
+          </ToolbarButton>
+        </Tooltip>
+      )}
       <Tooltip content="Refresh">
-        <styled.button
-          ml="auto"
-          className="group"
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          px="4px"
-          height="26px"
-          minWidth="28px"
-          _hover={{
-            backgroundColor:
-              "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+        <ToolbarButton onClick={() => refresh()}>
+          <RefreshCwIcon className={toolbarIcon} />
+        </ToolbarButton>
+      </Tooltip>
+      <Tooltip
+        content={
+          "Toggle layer visibility" +
+          (isExpandButtonDisabled ? " (no layers)" : "")
+        }
+      >
+        <Collapsible.Trigger asChild>
+          <ToolbarButton
+            aria-selected={isExpanded}
+            disabled={isExpandButtonDisabled}
+            onClick={() => {
+              store.send({
+                type: "setIsExpanded",
+                isExpanded: !isExpanded,
+              });
+            }}
+          >
+            <ScanEyeIcon className={toolbarIcon} />
+          </ToolbarButton>
+        </Collapsible.Trigger>
+      </Tooltip>
+      <Tooltip content="Group elements by @layer">
+        <Collapsible.Trigger asChild>
+          <ToolbarButton
+            aria-selected={groupByLayer}
+            onClick={() => {
+              store.send({
+                type: "setGroupByLayer",
+                groupByLayer: !groupByLayer,
+              });
+            }}
+          >
+            <LayersIcon className={toolbarIcon} />
+          </ToolbarButton>
+        </Collapsible.Trigger>
+      </Tooltip>
+      <Tooltip content="Group elements by @media">
+        <ToolbarButton
+          aria-selected={groupByMedia}
+          onClick={() => {
+            store.send({
+              type: "setGroupByMedia",
+              groupByMedia: !groupByMedia,
+            });
           }}
-          _selected={{
-            backgroundColor:
-              "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-            color: "var(--icon-toggled, rgb(124, 172, 248))",
-          }}
-          onClick={() => refresh()}
         >
-          <RefreshCwIcon
-            className={css({
-              w: "16px",
-              h: "16px",
-              opacity: { base: 0.8, _groupHover: 1 },
-            })}
-          />
-        </styled.button>
+          <MonitorSmartphone className={toolbarIcon} />
+        </ToolbarButton>
       </Tooltip>
       <Tooltip content="Show selectors">
         <Collapsible.Trigger asChild>
-          <styled.button
+          <ToolbarButton
             aria-selected={showSelector}
             className="group"
             display="flex"
@@ -730,93 +627,9 @@ const Toolbar = (props: ToolbarProps) => {
               });
             }}
           >
-            <BoxSelectIcon
-              className={css({
-                w: "16px",
-                h: "16px",
-                opacity: { base: 0.8, _groupHover: 1 },
-              })}
-            />
-          </styled.button>
+            <BoxSelectIcon className={toolbarIcon} />
+          </ToolbarButton>
         </Collapsible.Trigger>
-      </Tooltip>
-      <Tooltip content="Group elements by @layer">
-        <Collapsible.Trigger asChild>
-          <styled.button
-            aria-selected={groupByLayer}
-            className="group"
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            px="4px"
-            height="26px"
-            minWidth="28px"
-            _hover={{
-              backgroundColor:
-                "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-            }}
-            _selected={{
-              backgroundColor:
-                "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-              color: "var(--icon-toggled, rgb(124, 172, 248))",
-            }}
-            onClick={() => {
-              const update = !groupByLayer;
-              if (update) {
-                store.send({
-                  type: "setVisibleLayers",
-                  visibleLayers: Array.from(computed.rulesByLayer.keys()),
-                });
-              }
-
-              store.send({ type: "setGroupByLayer", groupByLayer: update });
-            }}
-          >
-            <LayersIcon
-              className={css({
-                w: "16px",
-                h: "16px",
-                opacity: { base: 0.8, _groupHover: 1 },
-              })}
-            />
-          </styled.button>
-        </Collapsible.Trigger>
-      </Tooltip>
-      <Tooltip content="Group elements by @media">
-        <styled.button
-          aria-selected={groupByMedia}
-          className="group"
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          px="4px"
-          mr="2px"
-          height="26px"
-          minWidth="28px"
-          _hover={{
-            backgroundColor:
-              "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-          }}
-          _selected={{
-            backgroundColor:
-              "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-            color: "var(--icon-toggled, rgb(124, 172, 248))",
-          }}
-          onClick={() => {
-            store.send({
-              type: "setGroupByMedia",
-              groupByMedia: !groupByMedia,
-            });
-          }}
-        >
-          <MonitorSmartphone
-            className={css({
-              w: "16px",
-              h: "16px",
-              opacity: { base: 0.8, _groupHover: 1 },
-            })}
-          />
-        </styled.button>
       </Tooltip>
     </Flex>
   );
@@ -964,11 +777,8 @@ const Declaration = (props: DeclarationProps) => {
 
   const [enabled, setEnabled] = useState(true);
   const id = useId();
-  const filter = useSelector(store, (state) => state.context.filter);
-  const showSelector = useSelector(
-    store,
-    (state) => state.context.showSelector
-  );
+  const filter = useSelector(store, (s) => s.context.filter);
+  const showSelector = useSelector(store, (s) => s.context.showSelector);
 
   return (
     <styled.code
@@ -1349,7 +1159,7 @@ const EditableValue = (props: EditableValueProps) => {
 
 const EditablePreview = () => {
   const ctx = useEditableContext();
-  const filter = useSelector(store, (state) => state.context.filter);
+  const filter = useSelector(store, (s) => s.context.filter);
 
   return (
     <span {...ctx.previewProps} className={css({ whiteSpace: "normal!" })}>
@@ -1436,7 +1246,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
   const { inspected, refresh, overrides, setOverrides } = props;
 
   const startEditing = (e: MouseEvent, from: "first" | "last") => {
-    console.log("start-editing", from);
+    // console.log("start-editing", from);
     const state = getState();
 
     if (state === "key") {
@@ -1465,7 +1275,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
   };
 
   const cancelEditing = (reason: string) => {
-    console.log("cancel-editing", reason);
+    // console.log("cancel-editing", reason);
     dom.getEditableKey().innerText = "";
     dom.getEditableValue().innerText = "";
     delete dom.getInlineContainer().dataset.editing;
@@ -1475,7 +1285,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
   const commit = () => {
     const editableValue = dom.getEditableValue();
     const editableKey = dom.getEditableKey();
-    console.log("commit", editableValue.innerText);
+    // console.log("commit", editableValue.innerText);
 
     const declaration = {
       prop: editableKey.innerText,
@@ -1613,7 +1423,7 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
           setState("value");
 
           const editableValue = dom.getEditableValue();
-          console.log("commit-key", editableValue);
+          // console.log("commit-key", editableValue);
           editableValue.focus();
         }}
       />

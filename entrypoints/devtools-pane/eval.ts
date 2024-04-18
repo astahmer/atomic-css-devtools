@@ -148,13 +148,15 @@ const inspect = async () => {
         contextWindow = contextWindow.parent as Window & typeof globalThis;
       }
 
-      return selectors;
+      const filtered = selectors.filter(Boolean);
+      if (filtered.length === 0) return null;
+
+      return filtered;
     }
 
     return getElementSelectors(el);
   });
 
-  console.log({ selectors });
   if (!selectors) return null;
 
   return api.inspectElement({ selectors });

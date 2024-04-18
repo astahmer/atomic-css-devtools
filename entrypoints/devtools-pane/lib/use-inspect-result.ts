@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useSelector } from "@xstate/store/react";
+import { useEffect, useRef } from "react";
 import { evaluator } from "../eval";
 import { InspectResult } from "../inspect-api";
+import { store } from "../store";
 
 export const useInspectedResult = (
   cb?: (result: InspectResult | null) => void
 ) => {
-  const [result, setResult] = useState(null as InspectResult | null);
+  const result = useSelector(store, (s) => s.context.inspected);
+  const setResult = (inspected: InspectResult | null) =>
+    store.send({ type: "setInspected", inspected });
 
   // Refresh on inspected element changed
   useEffect(() => {
@@ -39,6 +43,13 @@ export const useInspectedResult = (
     };
     run();
   }, [result?.env.location]);
+
+  // Keep track of the window size, will be useful to match the applied rules based on the current env
+  useEffect(() => {
+    return evaluator.onMsg.resize((ev) => {
+      store.send({ type: "setEnv", env: ev.data });
+    });
+  }, []);
 
   const refresh = async () => {
     const update = await evaluator.inspectElement();

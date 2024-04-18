@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useSelector } from "@xstate/store/react";
+import { useEffect } from "react";
 import { evaluator } from "../eval";
-import { InspectResult } from "../inspect-api";
+import { store } from "../store";
 
 export const useWindowSize = () => {
-  const [windowSize, setWindowSize] = useState({} as InspectResult["env"]);
+  const windowSize = useSelector(store, (s) => s.context.env);
 
   useEffect(() => {
     return evaluator.onMsg.resize((ev) => {
-      setWindowSize(ev.data);
+      store.send({ type: "setEnv", env: ev.data });
     });
   }, []);
 
