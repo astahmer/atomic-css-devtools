@@ -68,6 +68,8 @@ const overrideKey = Symbol("overrideKey");
 // TODO when (next) inline style is disabled (line-through), remove disabled state from previous ones (which are now applied)
 // TODO line-through on atomic class row declaration when there's an inline style declaration for the same prop (unless atomic has important, unless style has important)
 // TODO remove inline style line when backspace + no value
+// TODO automatically camelCase to dash-case when adding a new inline style declaration
+// TODO prevent adding inline style declaration with invalid property name (it currently throws)
 
 // TODO compactCss inline style
 // TODO color picker on color previews ?
@@ -799,7 +801,7 @@ const Declaration = (props: DeclarationProps) => {
               prop: prop,
               value: matchValue,
               kind: "inlineStyle",
-              atIndex: index + 1,
+              atIndex: index,
               isCommented: !enabled,
             });
 
