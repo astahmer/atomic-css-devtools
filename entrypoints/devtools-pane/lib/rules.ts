@@ -40,7 +40,7 @@ export const getLayer = (rule: MatchedRule) => getAncestor(rule, isLayer);
 export const getMedia = (rule: MatchedRule) => getAncestor(rule, isMedia);
 
 /** Goes through each parent Layer to compute the final dot-delimited layer name */
-export const getComputedLayer = (rule: MatchedLayerBlockRule) => {
+export const getComputedLayerStack = (rule: MatchedLayerBlockRule) => {
   const stack = [rule];
   let current = rule;
   while (current) {
@@ -52,6 +52,62 @@ export const getComputedLayer = (rule: MatchedLayerBlockRule) => {
 
   return stack;
 };
+
+export const getComputedLayerName = (rule: MatchedLayerBlockRule) => {
+  return getComputedLayerStack(rule)
+    .reverse()
+    .map((r) => r.layer)
+    .join(".");
+};
+
+export const getLayerName = (rule: CSSLayerBlockRule) => {
+  const stack = [rule];
+  let current = rule;
+  while (current) {
+    if (current.parentRule) {
+      current = current.parentRule as CSSLayerBlockRule;
+      stack.push(current);
+    } else break;
+  }
+
+  return stack
+    .reverse()
+    .map((r) => r.name)
+    .join(".");
+};
+
+/**
+ * Reorders layer names so that nested layers appear immediately before their root layers.
+ * @param layers Array of layer names including nested layers.
+ * @returns New array of layer names with nested layers reordered.
+ */
+export function reorderNestedLayers(layers: string[]): string[] {
+  // Create a new array to store the reordered layers
+  const reordered: string[] = [];
+
+  // Iterate over each layer
+  layers.forEach((layer) => {
+    // Split the layer to detect if it is a nested layer
+    const parts = layer.split(".");
+    if (parts.length > 1) {
+      // It's a nested layer, find its parent index
+      const parentName = parts.slice(0, -1).join(".");
+      const parentIndex = reordered.findIndex((el) => el === parentName);
+      if (parentIndex !== -1) {
+        // Insert the nested layer right before its parent
+        reordered.splice(parentIndex, 0, layer);
+      } else {
+        // If parent is not yet in the list, just add at the end
+        reordered.push(layer);
+      }
+    } else {
+      // Not a nested layer, add normally at the end
+      reordered.push(layer);
+    }
+  });
+
+  return reordered;
+}
 
 export const symbols = {
   implicitOuterLayer: "<implicit_outer_layer>",

@@ -1,6 +1,12 @@
 import { asserts } from "./asserts";
 import { inlineStylesToObject } from "./lib/astish";
-import { getComputedLayer, getLayer, getMedia } from "./lib/rules";
+import {
+  getComputedLayerName,
+  getLayer,
+  getLayerName,
+  getMedia,
+  reorderNestedLayers,
+} from "./lib/rules";
 
 class InspectAPI {
   traverseSelectors(selectors: string[]): HTMLElement | null {
@@ -137,10 +143,7 @@ class InspectAPI {
       const parentLayer = getLayer(rule);
 
       if (parentLayer) {
-        rule.layer = getComputedLayer(parentLayer)
-          .reverse()
-          .map((r) => r.layer)
-          .join(".");
+        rule.layer = getComputedLayerName(parentLayer);
 
         if (!layers.has(rule.layer)) {
           layers.set(rule.layer, []);
@@ -212,7 +215,8 @@ class InspectAPI {
    * Traverses the document stylesheets and returns all matching CSS rules
    */
   getMatchingRules(element: Element) {
-    const layerOrders = [] as Array<string[]>;
+    const seenLayers = new Set<string>();
+
     const matchedRules: Array<
       CSSStyleRule | CSSMediaRule | CSSLayerBlockRule
     >[] = [];
@@ -224,14 +228,20 @@ class InspectAPI {
       try {
         if (sheet.cssRules) {
           const rules = Array.from(sheet.cssRules);
-          const matchingRules = this.findMatchingRules(rules, element);
+          const matchingRules = this.findMatchingRules(
+            rules,
+            element,
+            (rule) => {
+              if (asserts.isCSSLayerStatementRule(rule)) {
+                rule.nameList.forEach((layer) => seenLayers.add(layer));
+              } else if (asserts.isCSSLayerBlockRule(rule)) {
+                seenLayers.add(getLayerName(rule));
+              }
+            }
+          );
+
           if (matchingRules.length > 0) {
             matchedRules.push(matchingRules);
-            rules.forEach((rule) => {
-              if (asserts.isCSSLayerStatementRule(rule)) {
-                layerOrders.push(Array.from(rule.nameList));
-              }
-            });
           }
         }
       } catch (e) {
@@ -248,7 +258,10 @@ class InspectAPI {
       })
       .filter(Boolean) as MatchedStyleRule[];
 
-    return { rules: serialized, layerOrders };
+    return {
+      rules: serialized,
+      layerOrders: reorderNestedLayers(Array.from(seenLayers)),
+    };
   }
 
   /**
@@ -450,13 +463,19 @@ class InspectAPI {
   }
 
   /**
-   * Recursively finds all matching CSS rules, traversing @media queries and @layer blocks
+   * Recursively finds all matching CSS rules, traversing `@media` queries and `@layer` blocks
    */
-  private findMatchingRules(rules: CSSRule[], element: Element) {
+  private findMatchingRules(
+    rules: CSSRule[],
+    element: Element,
+    cb: (rule: CSSRule) => void
+  ) {
     let matchingRules: Array<CSSStyleRule | CSSMediaRule | CSSLayerBlockRule> =
       [];
 
     for (const rule of rules) {
+      cb(rule);
+
       if (asserts.isCSSStyleRule(rule) && element.matches(rule.selectorText)) {
         matchingRules.push(rule);
       } else if (
@@ -464,7 +483,7 @@ class InspectAPI {
         asserts.isCSSLayerBlockRule(rule)
       ) {
         matchingRules = matchingRules.concat(
-          this.findMatchingRules(Array.from(rule.cssRules), element)
+          this.findMatchingRules(Array.from(rule.cssRules), element, cb)
         );
       }
     }
@@ -473,7 +492,7 @@ class InspectAPI {
   }
 
   /**
-   * Recursively finds all matching CSS rules, traversing @media queries and @layer blocks
+   * Recursively finds all matching CSS rules, traversing `@media` queries and `@layer` blocks
    */
   private findStyleRuleBySelector(
     rules: CSSRule[],

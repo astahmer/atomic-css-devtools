@@ -56,6 +56,9 @@ export const store = createStore(
 
       const computed = computeStyles(rules, { filter: ctx.filter });
       const availableLayers = Array.from(computed.rulesByLayer.keys());
+      const sortedAvailableLayers = ctx.inspected?.layersOrder.length
+        ? sortArrayByOrder(availableLayers, ctx.inspected?.layersOrder)
+        : availableLayers;
 
       // Whenever the available layers changes, we reset the selected layers to the available layers
       // (layersOrder is gathered from all stylesheets, whereas `availableLayers` is the layers that are actually applied to the element)
@@ -70,7 +73,7 @@ export const store = createStore(
         rules,
         computed,
         //
-        availableLayers,
+        availableLayers: sortedAvailableLayers,
         selectedLayers: diff.isSame ? ctx.selectedLayers : availableLayers,
       };
     },
@@ -97,4 +100,15 @@ const diffLayers = (prevLayers: string[], nextLayers: string[]) => {
   const removed = prevLayers.filter((layer) => !nextLayers.includes(layer));
   const isSame = added.length === 0 && removed.length === 0;
   return { added, removed, isSame };
+};
+
+const sortArrayByOrder = (arr: string[], order: string[]) => {
+  return arr.sort((a, b) => {
+    const aIndex = order.indexOf(a);
+    const bIndex = order.indexOf(b);
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return 1;
+
+    return aIndex - bIndex;
+  });
 };

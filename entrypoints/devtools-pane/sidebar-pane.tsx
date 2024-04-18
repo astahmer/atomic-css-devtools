@@ -189,37 +189,35 @@ export function SidebarPane() {
           })}
         >
           <Wrap gap="2" alignItems="center" mb="2px">
-            {sortArrayByOrder(availableLayers, inspected.layersOrder).map(
-              (layer) => {
-                if (layer === symbols.implicitOuterLayer) return null;
-                return (
-                  <HStack gap="2px" alignItems="center" key={layer}>
-                    <input
-                      key={layer}
-                      type="checkbox"
-                      name="layers"
-                      id={"layer-" + layer}
-                      value={layer}
-                      className={checkbox}
-                      checked={selectedLayers.includes(layer)}
-                      disabled={!availableLayers.length}
-                      onChange={(e) =>
-                        store.send({
-                          type: "setSelectedLayers",
-                          selectedLayers: e.target.checked
-                            ? Array.from(new Set([...selectedLayers, layer]))
-                            : selectedLayers.filter((l) => l !== layer),
-                        })
-                      }
-                    />
-                    <label htmlFor={"layer-" + layer}>
-                      {layer}
-                      {""}({computed.rulesByLayer.get(layer)?.length})
-                    </label>
-                  </HStack>
-                );
-              }
-            )}
+            {availableLayers.map((layer) => {
+              if (layer === symbols.implicitOuterLayer) return null;
+              return (
+                <HStack gap="2px" alignItems="center" key={layer}>
+                  <input
+                    key={layer}
+                    type="checkbox"
+                    name="layers"
+                    id={"layer-" + layer}
+                    value={layer}
+                    className={checkbox}
+                    checked={selectedLayers.includes(layer)}
+                    disabled={!availableLayers.length}
+                    onChange={(e) =>
+                      store.send({
+                        type: "setSelectedLayers",
+                        selectedLayers: e.target.checked
+                          ? Array.from(new Set([...selectedLayers, layer]))
+                          : selectedLayers.filter((l) => l !== layer),
+                      })
+                    }
+                  />
+                  <label htmlFor={"layer-" + layer}>
+                    {layer}
+                    {""}({computed.rulesByLayer.get(layer)?.length})
+                  </label>
+                </HStack>
+              );
+            })}
           </Wrap>
         </Collapsible.Content>
       </Collapsible.Root>
@@ -401,17 +399,6 @@ export function SidebarPane() {
     </>
   );
 }
-
-const sortArrayByOrder = (arr: string[], order: string[]) => {
-  return arr.sort((a, b) => {
-    const aIndex = order.indexOf(a);
-    const bIndex = order.indexOf(b);
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return 1;
-
-    return aIndex - bIndex;
-  });
-};
 
 interface ToolbarProps {
   inspected: InspectResult | null;
