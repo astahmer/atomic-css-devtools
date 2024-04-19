@@ -14,6 +14,7 @@
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare",
     "test": "vitest",
+    "typecheck": "tsc --noEmit",
     "play": "vite"
   },
   "imports": {
