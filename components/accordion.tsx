@@ -2,7 +2,7 @@ import { Accordion } from "@ark-ui/react/accordion";
 import type { ComponentProps } from "react";
 import { styled } from "#styled-system/jsx";
 import { accordion } from "#styled-system/recipes";
-import { createStyleContext } from "#lib/create-style-context";
+import { createStyleContext } from "#components/create-style-context.js";
 
 const { withProvider, withContext } = createStyleContext(accordion);
 

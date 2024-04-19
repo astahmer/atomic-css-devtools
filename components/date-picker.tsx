@@ -2,7 +2,7 @@ import { DatePicker } from "@ark-ui/react/date-picker";
 import type { ComponentProps } from "react";
 import { styled } from "#styled-system/jsx";
 import { datePicker } from "#styled-system/recipes";
-import { createStyleContext } from "#lib/create-style-context";
+import { createStyleContext } from "#components/create-style-context.js";
 
 const { withProvider, withContext } = createStyleContext(datePicker);
 

@@ -2,7 +2,7 @@ import { TagsInput } from "@ark-ui/react/tags-input";
 import type { ComponentProps } from "react";
 import { styled } from "#styled-system/jsx";
 import { tagsInput } from "#styled-system/recipes";
-import { createStyleContext } from "#lib/create-style-context";
+import { createStyleContext } from "#components/create-style-context.js";
 
 const { withProvider, withContext } = createStyleContext(tagsInput);
 

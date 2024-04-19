@@ -2,7 +2,7 @@ import { Carousel } from "@ark-ui/react/carousel";
 import type { ComponentProps } from "react";
 import { styled } from "#styled-system/jsx";
 import { carousel } from "#styled-system/recipes";
-import { createStyleContext } from "#lib/create-style-context";
+import { createStyleContext } from "#components/create-style-context.js";
 
 const { withProvider, withContext } = createStyleContext(carousel);
 

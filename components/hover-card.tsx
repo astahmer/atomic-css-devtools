@@ -2,7 +2,7 @@ import { HoverCard } from "@ark-ui/react/hover-card";
 import type { ComponentProps } from "react";
 import { styled } from "#styled-system/jsx";
 import { hoverCard } from "#styled-system/recipes";
-import { createStyleContext } from "#lib/create-style-context";
+import { createStyleContext } from "#components/create-style-context.js";
 
 const { withProvider, withContext } = createStyleContext(hoverCard);
 

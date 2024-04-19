@@ -2,7 +2,7 @@ import { Menu } from "@ark-ui/react/menu";
 import type { ComponentProps } from "react";
 import { styled } from "#styled-system/jsx";
 import { menu } from "#styled-system/recipes";
-import { createStyleContext } from "#lib/create-style-context";
+import { createStyleContext } from "#components/create-style-context.js";
 
 const { withProvider, withContext } = createStyleContext(menu);
 
