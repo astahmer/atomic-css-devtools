@@ -1,10 +1,9 @@
 import { expect, test } from "vitest";
-import { inlineStylesToObject } from "../entrypoints/devtools-pane/lib/astish";
+import { cssTextToEntries } from "../entrypoints/devtools-pane/lib/css-text-to-entries";
 
 test("return all declarations", () => {
-  expect(
-    inlineStylesToObject("color: red; color: blue !important; color: green;")
-  ).toMatchInlineSnapshot(`
+  expect(cssTextToEntries("color: red; color: blue !important; color: green;"))
+    .toMatchInlineSnapshot(`
     [
       [
         "color",
@@ -23,7 +22,7 @@ test("return all declarations", () => {
 });
 
 test("works without space", () => {
-  expect(inlineStylesToObject("color: red;color: blue;color: green;"))
+  expect(cssTextToEntries("color: red;color: blue;color: green;"))
     .toMatchInlineSnapshot(`
       [
         [
@@ -44,9 +43,7 @@ test("works without space", () => {
 
 test("works with multiple comma", () => {
   expect(
-    inlineStylesToObject(
-      " color: green;; color: blue; color: red; color: yellow;"
-    )
+    cssTextToEntries(" color: green;; color: blue; color: red; color: yellow;")
   ).toMatchInlineSnapshot(`
     [
       [
@@ -71,7 +68,7 @@ test("works with multiple comma", () => {
 
 test("extracts commented declarations", () => {
   expect(
-    inlineStylesToObject(
+    cssTextToEntries(
       " color: green;; color: blue;/* color: orange; */ color: red; /* color: amber; */color: yellow;/* color: pink; */" //
     )
   ).toMatchInlineSnapshot(`

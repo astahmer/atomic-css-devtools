@@ -16,7 +16,7 @@ type StyleEntry = [string, string, boolean];
  * Instead of returning an object with only the last declaration for a given property, this returns an array of all declarations for a given property
  * e.g. `color: red; color: blue;` will return `[["color", "red"], ["color", "blue"]]` instead of `{ color: "blue" }`
  */
-export const inlineStylesToObject = (val: string) => {
+export const cssTextToEntries = (val: string) => {
   let results = [];
   let cleanedVal = val.replace(/\n+/g, " "); // Normalize newlines to spaces
 

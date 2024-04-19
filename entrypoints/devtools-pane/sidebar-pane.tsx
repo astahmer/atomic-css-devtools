@@ -25,6 +25,14 @@ import { store } from "./store";
 import { Toolbar } from "./toolbar";
 import { HistoryState, overrideKey } from "./types";
 
+const EmptyState = () => (
+  <Center px="4" h="100%">
+    <Stack textStyle="2xl" fontFamily="sans-serif">
+      Select an element in the element panel
+    </Stack>
+  </Center>
+);
+
 export function SidebarPane() {
   const { inspected, refresh } = useInspectedResult(() => {
     api.reset();
@@ -75,13 +83,7 @@ export function SidebarPane() {
   }, [inspected?.env.location]);
 
   if (!inspected) {
-    return (
-      <Center px="4" h="100%">
-        <Stack textStyle="2xl" fontFamily="sans-serif">
-          Select an element in the element panel
-        </Stack>
-      </Center>
-    );
+    return <EmptyState />;
   }
 
   const hasMatches =
@@ -157,7 +159,6 @@ export function SidebarPane() {
           fontSize="11px"
           lineHeight="1.2"
         >
-          {/* TODO toggle inline style */}
           <InsertInlineRow
             inspected={inspected}
             refresh={refresh}

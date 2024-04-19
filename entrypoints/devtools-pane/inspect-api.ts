@@ -1,5 +1,5 @@
 import { asserts } from "./asserts";
-import { inlineStylesToObject } from "./lib/astish";
+import { cssTextToEntries } from "./lib/css-text-to-entries";
 import {
   getComputedLayerName,
   getLayer,
@@ -208,7 +208,7 @@ class InspectAPI {
   getStyleAttributeEntries(element: HTMLElement) {
     if (!element.style.cssText) return [];
     // console.log(element.style);
-    return inlineStylesToObject(element.getAttribute("style") ?? "");
+    return cssTextToEntries(element.getAttribute("style") ?? "");
   }
 
   /**
@@ -359,7 +359,7 @@ class InspectAPI {
     const { element, atIndex } = params;
     if (element) {
       const cssText = element.getAttribute("style") || "";
-      const declarations = inlineStylesToObject(cssText);
+      const declarations = cssTextToEntries(cssText);
       const split = declarations.filter(Boolean);
 
       // Removes the declaration at the given index
