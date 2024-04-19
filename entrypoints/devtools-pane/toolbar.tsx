@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import { css } from "../../styled-system/css";
 import { Flex, styled } from "../../styled-system/jsx";
-import CrossCircleFilled from "./components/cross-circle-filled.svg";
-import { Tooltip } from "./components/tooltip";
+import CrossCircleFilled from "../../public/cross-circle-filled.svg";
+import { Tooltip } from "#components/tooltip";
 import { InspectResult } from "./inspect-api";
 import { computeStyles, symbols } from "./lib/rules";
 import { store } from "./store";

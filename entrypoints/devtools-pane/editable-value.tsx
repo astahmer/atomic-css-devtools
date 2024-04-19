@@ -4,7 +4,7 @@ import { TrashIcon, Undo2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { css } from "../../styled-system/css";
 import { styled } from "../../styled-system/jsx";
-import { Tooltip } from "./components/tooltip";
+import { Tooltip } from "#components/tooltip";
 import { evaluator } from "./eval";
 import { HighlightMatch } from "./highlight-match";
 import { hypenateProperty } from "./lib/hyphenate-proprety";

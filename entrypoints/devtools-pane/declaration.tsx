@@ -4,7 +4,7 @@ import { useSelector } from "@xstate/store/react";
 import { useId, useState } from "react";
 import { css } from "../../styled-system/css";
 import { styled } from "../../styled-system/jsx";
-import { Tooltip } from "./components/tooltip";
+import { Tooltip } from "#components/tooltip";
 import { EditableValue, EditableValueProps } from "./editable-value";
 import { evaluator } from "./eval";
 import { HighlightMatch } from "./highlight-match";
