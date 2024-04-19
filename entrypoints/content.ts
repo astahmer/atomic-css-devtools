@@ -106,6 +106,27 @@ export default defineContentScript({
         computedValue: computedValue ?? null,
       };
     });
+
+    onMsg.removeInlineStyle((message) => {
+      const element = inspectApi.traverseSelectors(message.data.selectors);
+      if (!element) return { hasUpdated: false, computedValue: null };
+
+      const hasUpdated = inspectApi.removeInlineStyle({
+        element,
+        atIndex: message.data.atIndex,
+      });
+      if (!hasUpdated) return { hasUpdated: false, computedValue: null };
+
+      const computedValue = inspectApi.computePropertyValue(
+        message.data.selectors,
+        message.data.prop
+      );
+
+      return {
+        hasUpdated: Boolean(hasUpdated),
+        computedValue: computedValue ?? null,
+      };
+    });
   },
 });
 

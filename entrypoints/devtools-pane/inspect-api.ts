@@ -340,6 +340,7 @@ class InspectAPI {
       // will not work, it will only the last property+value declaration for a given property
 
       const cssText = element.getAttribute("style") || "";
+
       const updated = this.getUpdatedCssText({
         cssText,
         prop,
@@ -354,6 +355,33 @@ class InspectAPI {
     }
   }
 
+  removeInlineStyle(params: RemoveInlineStyle & { element: HTMLElement }) {
+    const { element, atIndex } = params;
+    if (element) {
+      const cssText = element.getAttribute("style") || "";
+      const declarations = inlineStylesToObject(cssText);
+      const split = declarations.filter(Boolean);
+
+      // Removes the declaration at the given index
+      const updated =
+        split
+          .slice(0, atIndex)
+          .concat(split.slice(atIndex + 1))
+          .map((entry) => {
+            const [prop, value, isCommented] = entry;
+            const declaration = `${prop}: ${value}`;
+            if (isCommented) {
+              return `;/* ${declaration} */;`;
+            }
+            return declaration;
+          })
+          .join(";") + ";";
+
+      element.setAttribute("style", updated);
+      return true;
+    }
+  }
+
   /**
    * getUpdatedCssText("color: red; color: blue;", "color", "green", 0)
    * => "color: red; color: green; color: blue;"
@@ -362,7 +390,7 @@ class InspectAPI {
     const { cssText, prop, value, atIndex, isCommented, mode } = params;
     let declaration = ` ${prop}: ${value}`;
     if (isCommented) {
-      declaration = `/* ${declaration} */`;
+      declaration = `;/* ${declaration} */;`;
     }
 
     if (atIndex === null) {
@@ -568,6 +596,10 @@ export interface InlineStyleUpdate {
   atIndex: number | null;
   mode: "insert" | "edit";
   isCommented: boolean;
+}
+
+export interface RemoveInlineStyle {
+  atIndex: number;
 }
 
 const extractVariableName = (value: string) => {

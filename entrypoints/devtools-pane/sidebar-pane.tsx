@@ -17,6 +17,7 @@ import {
   MonitorSmartphone,
   RefreshCwIcon,
   ScanEyeIcon,
+  TrashIcon,
   Undo2,
 } from "lucide-react";
 import {
@@ -276,7 +277,7 @@ export function SidebarPane() {
               }
 
               return (
-                <div className="group">
+                <div className={cx("group", css({ px: "2px" }))}>
                   {Array.from(computed.order).map((key, index) => (
                     <Declaration
                       {...{
@@ -715,7 +716,10 @@ const DeclarationList = (props: DeclarationListProps) => {
 };
 
 interface DeclarationProps
-  extends Pick<EditableValueProps, "prop" | "override" | "setOverride"> {
+  extends Pick<
+    EditableValueProps,
+    "prop" | "override" | "setOverride" | "isRemovable" | "refresh"
+  > {
   index: number;
   matchValue: string;
   rule: MatchedStyleRule;
@@ -743,6 +747,8 @@ const Declaration = (props: DeclarationProps) => {
     override,
     setOverride,
     disabled,
+    isRemovable,
+    refresh,
   } = props;
 
   let computedValue = override?.computed;
@@ -864,6 +870,8 @@ const Declaration = (props: DeclarationProps) => {
         matchValue={matchValue}
         override={override}
         setOverride={setOverride}
+        isRemovable={isRemovable}
+        refresh={refresh}
       />
       {matchValue.startsWith("var(--") &&
         computedValue &&
@@ -1034,6 +1042,8 @@ interface EditableValueProps {
    * so we can show the underlying value as inlay hint and show the appropriate color preview
    */
   setOverride: (value: string | null, computed: string | null) => void;
+  isRemovable?: boolean;
+  refresh?: () => Promise<void>;
 }
 
 const EditableValue = (props: EditableValueProps) => {
@@ -1045,6 +1055,8 @@ const EditableValue = (props: EditableValueProps) => {
     matchValue,
     override,
     setOverride,
+    isRemovable,
+    refresh,
   } = props;
 
   const ref = useRef(null as HTMLDivElement | null);
@@ -1119,6 +1131,42 @@ const EditableValue = (props: EditableValueProps) => {
         />
         <EditablePreview />
       </Editable.Area>
+      {isRemovable && (
+        <Tooltip
+          content={
+            <styled.div fontSize="10px" lineHeight="1.2" gap="1">
+              <span>Remove</span>
+            </styled.div>
+          }
+        >
+          <TrashIcon
+            className={css({
+              ml: "4px",
+              w: "10px",
+              h: "10px",
+              opacity: { base: 0.5, _hover: 1 },
+              cursor: "pointer",
+            })}
+            onClick={() => {
+              const snapshot = store.getSnapshot();
+              const inspected = snapshot.context.inspected;
+              if (!inspected) return;
+
+              return evaluator.api
+                .removeInlineStyle({
+                  selectors: inspected.elementSelectors,
+                  prop,
+                  atIndex: index,
+                })
+                .then(({ hasUpdated, computedValue }) => {
+                  if (!hasUpdated) return;
+                  setOverride(null, computedValue);
+                  refresh?.();
+                });
+            }}
+          />
+        </Tooltip>
+      )}
       {override !== null && (
         <Tooltip
           content={
@@ -1539,6 +1587,8 @@ const InsertInlineRow = (props: InsertInlineRowProps) => {
                       },
                       inspected,
                       disabled: applied[prop] !== value || isAppliedLater,
+                      isRemovable: true,
+                      refresh: refresh,
                       override: overrides?.[key] ?? null,
                       setOverride: (value, computed) =>
                         setOverrides((overrides) => ({
