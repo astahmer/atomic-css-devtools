@@ -13,7 +13,8 @@
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
     "postinstall": "wxt prepare",
-    "test": "vitest"
+    "test": "vitest",
+    "play": "vite"
   },
   "imports": {
     "#components/*": "./components/*",
@@ -44,6 +45,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "type-fest": "^4.15.0",
     "typescript": "^5.3.3",
+    "vite": "^5.2.8",
     "vite-plugin-inspect": "^0.8.3",
     "vitest": "^1.4.0",
     "wxt": "^0.17.0"
