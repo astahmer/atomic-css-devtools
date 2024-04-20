@@ -10,7 +10,9 @@ export default defineConfig({
   preflight: true,
 
   // Where to look for your css declarations
-  include: ["./{components,entrypoints,lib}/**/*.{js,jsx,ts,tsx}"],
+  include: [
+    "./{components,entrypoints,lib,src,playground}/**/*.{js,jsx,ts,tsx}",
+  ],
 
   // Files to exclude
   exclude: [],

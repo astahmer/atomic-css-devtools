@@ -1,19 +1,11 @@
-import { onMessage, sendMessage } from "webext-bridge/devtools";
-import { InspectResult } from "./inspect-api";
+import { Evaluator } from "../../src/devtools-context";
+import type { InspectResult } from "../../src/inspect-api";
 import {
-  DevtoolMessage,
-  MessageMap,
-  OnMessageProxy,
-  SendMessageProxy,
-} from "./message-typings";
-
-const devtools = browser.devtools;
-const inspectedWindow = devtools.inspectedWindow;
-
-type AnyFunction = (...args: any[]) => any;
-type AnyElementFunction = (element: HTMLElement, ...args: any[]) => any;
-type WithoutFirst<T extends AnyFunction> =
-  Parameters<T> extends [any, ...infer R] ? R : never;
+  AnyElementFunction,
+  WithoutFirst,
+  AnyFunction,
+} from "../../src/lib/types";
+import { contentScript } from "./api";
 
 const evalEl = <T extends AnyElementFunction>(
   fn: T,
@@ -29,7 +21,8 @@ const evalEl = <T extends AnyElementFunction>(
         .map((arg, index) => (index === 0 ? arg : JSON.stringify(arg)))
         .join() +
       ")";
-    const [result, error] = await inspectedWindow.eval(stringified);
+    const [result, error] =
+      await browser.devtools.inspectedWindow.eval(stringified);
     if (error) {
       // console.error("{evalEl} error");
       console.log({ stringified });
@@ -48,7 +41,8 @@ const evalFn = <T extends AnyFunction>(fn: T, ...args: Parameters<T>) => {
       ")(" +
       args.map((arg) => JSON.stringify(arg)).join() +
       ")";
-    const [result, error] = await inspectedWindow.eval(stringified);
+    const [result, error] =
+      await browser.devtools.inspectedWindow.eval(stringified);
     if (error) {
       // console.error("{eval} error");
       console.log({ stringified });
@@ -159,37 +153,10 @@ const inspect = async () => {
 
   if (!selectors) return null;
 
-  return api.inspectElement({ selectors });
+  return contentScript.inspectElement({ selectors });
 };
 
-const api = new Proxy<SendMessageProxy>({} as any, {
-  get<T extends keyof MessageMap>(_target: any, propKey: T) {
-    const context = "content-script";
-    const tabId = null as any;
-
-    return async function (arg?: any) {
-      // console.log(`Calling ${propKey} with payload`, arg);
-      return sendMessage(propKey, arg, { context, tabId });
-    } as MessageMap[T] extends DevtoolMessage<infer Data, infer Return>
-      ? (args: Data) => Promise<Return>
-      : (args: MessageMap[T]) => Promise<void>;
-  },
-});
-
-const onMsg = new Proxy<OnMessageProxy>({} as any, {
-  get<T extends keyof MessageMap>(_target: any, propKey: T) {
-    return function (cb: (message: any) => any) {
-      return onMessage(propKey, (message) => {
-        console.log(`Received ${propKey} with message`, message.data);
-        return cb(message);
-      });
-    };
-  },
-});
-
-export const evaluator = {
-  api,
-  onMsg,
+export const evaluator: Evaluator = {
   fn: evalFn,
   el: evalEl,
   copy: (valueToCopy: string) => {
@@ -199,32 +166,22 @@ export const evaluator = {
       valueToCopy
     );
   },
-  inspectElement: inspect,
+  inspect: inspect,
   onSelectionChanged: (cb: (element: InspectResult | null) => void) => {
     const handleSelectionChanged = async () => {
       const result = await inspect();
       cb(result ?? null);
     };
-    devtools.panels.elements.onSelectionChanged.addListener(
+    browser.devtools.panels.elements.onSelectionChanged.addListener(
       handleSelectionChanged
     );
 
     handleSelectionChanged();
 
     return () => {
-      devtools.panels.elements.onSelectionChanged.removeListener(
+      browser.devtools.panels.elements.onSelectionChanged.removeListener(
         handleSelectionChanged
       );
     };
-  },
-  onPaneShown: (cb: () => void) => {
-    onMessage("devtools-shown", () => {
-      cb();
-    });
-  },
-  onPaneHidden: (cb: () => void) => {
-    onMessage("devtools-hidden", () => {
-      cb();
-    });
   },
 };

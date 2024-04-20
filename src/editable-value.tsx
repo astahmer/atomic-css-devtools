@@ -2,14 +2,14 @@ import { Editable, useEditableContext } from "@ark-ui/react";
 import { useSelector } from "@xstate/store/react";
 import { TrashIcon, Undo2 } from "lucide-react";
 import { useRef, useState } from "react";
-import { css } from "../../styled-system/css";
-import { styled } from "../../styled-system/jsx";
+import { css } from "#styled-system/css";
+import { styled } from "#styled-system/jsx";
 import { Tooltip } from "#components/tooltip";
-import { evaluator } from "./eval";
 import { HighlightMatch } from "./highlight-match";
 import { hypenateProperty } from "./lib/hyphenate-proprety";
-import { symbols } from "./lib/rules";
+import { symbols } from "./lib/symbols";
 import { store } from "./store";
+import { useDevtoolsContext } from "./devtools-context";
 
 export interface EditableValueProps {
   index: number;
@@ -55,6 +55,8 @@ export const EditableValue = (props: EditableValueProps) => {
     refresh,
   } = props;
 
+  const { contentScript } = useDevtoolsContext();
+
   const ref = useRef(null as HTMLDivElement | null);
   const [key, setKey] = useState(0);
 
@@ -62,7 +64,7 @@ export const EditableValue = (props: EditableValueProps) => {
   const updateValue = (update: string) => {
     const kind =
       selector === symbols.inlineStyleSelector ? "inlineStyle" : "cssRule";
-    return evaluator.api.updateStyleRule({
+    return contentScript.updateStyleRule({
       selectors: kind === "inlineStyle" ? elementSelector : [selector],
       prop: hypenateProperty(prop),
       value: update,
@@ -148,7 +150,7 @@ export const EditableValue = (props: EditableValueProps) => {
               const inspected = snapshot.context.inspected;
               if (!inspected) return;
 
-              return evaluator.api
+              return contentScript
                 .removeInlineStyle({
                   selectors: inspected.elementSelectors,
                   prop,

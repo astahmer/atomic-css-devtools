@@ -8,13 +8,13 @@ import {
   useState,
 } from "react";
 import { flushSync } from "react-dom";
-import { css } from "../../styled-system/css";
-import { Flex, styled } from "../../styled-system/jsx";
-import { evaluator } from "./eval";
+import { css } from "#styled-system/css";
+import { Flex, styled } from "#styled-system/jsx";
 import { InspectResult } from "./inspect-api";
-import { symbols } from "./lib/rules";
-import { OverrideMap, overrideKey } from "./types";
+import { symbols } from "./lib/symbols";
+import { OverrideMap } from "./devtools-types";
 import { Declaration } from "./declaration";
+import { useDevtoolsContext } from "./devtools-context";
 
 interface InsertInlineRowProps {
   inspected: InspectResult;
@@ -42,6 +42,7 @@ const setState = (state: EditingState) => {
 
 export const InsertInlineRow = (props: InsertInlineRowProps) => {
   const { inspected, refresh, overrides, setOverrides } = props;
+  const { contentScript, onContentScriptMessage } = useDevtoolsContext();
 
   const startEditing = (e: MouseEvent, from: "first" | "last") => {
     // console.log("start-editing", from);
@@ -90,7 +91,7 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
       value: editableValue.innerText,
     };
 
-    return evaluator.api
+    return contentScript
       .appendInlineStyle({
         selectors: inspected.elementSelectors,
         prop: declaration.prop,
@@ -105,7 +106,7 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
         const key = `style:${prop}`;
         setOverrides((overrides) => ({
           ...overrides,
-          [overrideKey]: key,
+          [symbols.overrideKey]: key,
           [key]: value != null ? { value, computed: computedValue } : null,
         }));
 
@@ -121,7 +122,7 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
 
   // When focusing the host website window, cancel editing
   useEffect(() => {
-    return evaluator.onMsg.focus(() => {
+    return onContentScriptMessage.focus(() => {
       cancelEditing("focusing host website");
     });
   }, []);
@@ -354,7 +355,7 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
                       setOverride: (value, computed) =>
                         setOverrides((overrides) => ({
                           ...overrides,
-                          [overrideKey]: key,
+                          [symbols.overrideKey]: key,
                           [key]: value != null ? { value, computed } : null,
                         })),
                     }}

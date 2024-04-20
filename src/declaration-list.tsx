@@ -2,7 +2,8 @@ import { Dispatch, SetStateAction } from "react";
 import { Declaration } from "./declaration";
 import { InspectResult } from "./inspect-api";
 import { StyleRuleWithProp } from "./lib/rules";
-import { OverrideMap, overrideKey } from "./types";
+import { OverrideMap } from "./devtools-types";
+import { symbols } from "./lib/symbols";
 
 interface DeclarationListProps {
   rules: StyleRuleWithProp[];
@@ -28,7 +29,7 @@ export const DeclarationList = (props: DeclarationListProps) => {
           setOverride: (value, computed) =>
             setOverrides((overrides) => ({
               ...overrides,
-              [overrideKey]: prop,
+              [symbols.overrideKey]: prop,
               [prop]: value != null ? { value, computed } : null,
             })),
         }}

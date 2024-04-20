@@ -2,18 +2,19 @@ import * as TooltipPrimitive from "#components/tooltip";
 import { Portal } from "@ark-ui/react";
 import { useSelector } from "@xstate/store/react";
 import { useId, useState } from "react";
-import { css } from "../../styled-system/css";
-import { styled } from "../../styled-system/jsx";
+import { css } from "#styled-system/css";
+import { styled } from "#styled-system/jsx";
 import { Tooltip } from "#components/tooltip";
 import { EditableValue, EditableValueProps } from "./editable-value";
-import { evaluator } from "./eval";
 import { HighlightMatch } from "./highlight-match";
-import { InspectResult, MatchedStyleRule } from "./inspect-api";
+import type { InspectResult } from "./inspect-api";
+import type { MatchedStyleRule } from "./devtools-types";
 import { hypenateProperty } from "./lib/hyphenate-proprety";
 import { isColor } from "./lib/is-color";
-import { symbols } from "./lib/rules";
+import { symbols } from "./lib/symbols";
 import { unescapeString } from "./lib/unescape-string";
 import { store } from "./store";
+import { useDevtoolsContext } from "./devtools-context";
 
 interface DeclarationProps
   extends Pick<
@@ -74,6 +75,8 @@ export const Declaration = (props: DeclarationProps) => {
   const filter = useSelector(store, (s) => s.context.filter);
   const showSelector = useSelector(store, (s) => s.context.showSelector);
 
+  const { evaluator, contentScript } = useDevtoolsContext();
+
   return (
     <styled.code
       display="flex"
@@ -101,7 +104,7 @@ export const Declaration = (props: DeclarationProps) => {
         onChange={async (e) => {
           if (rule.selector === symbols.inlineStyleSelector) {
             const enabled = e.target.checked;
-            const result = await evaluator.api.updateStyleRule({
+            const result = await contentScript.updateStyleRule({
               selectors: inspected.elementSelectors,
               prop: prop,
               value: matchValue,

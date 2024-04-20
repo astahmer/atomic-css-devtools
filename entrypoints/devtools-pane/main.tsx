@@ -1,7 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { SidebarPane } from "./sidebar-pane.tsx";
+import { SidebarPane } from "../../src/sidebar-pane.tsx";
 import { sendMessage } from "webext-bridge/devtools";
+import { WithPlatformClass } from "./use-platform-class.ts";
+import { DevtoolsProvider } from "../../src/devtools-context.ts";
+import { extensionContext } from "./context.ts";
 
 browser.runtime.onMessage.addListener(
   function (_request, _sender, _sendResponse) {
@@ -17,6 +20,9 @@ browser.runtime.onMessage.addListener(
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <SidebarPane />
+    <DevtoolsProvider value={extensionContext}>
+      <SidebarPane />
+    </DevtoolsProvider>
+    <WithPlatformClass />
   </React.StrictMode>
 );

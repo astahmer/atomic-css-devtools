@@ -2,28 +2,20 @@ import { Collapsible } from "@ark-ui/react";
 import { useSelector } from "@xstate/store/react";
 import { useEffect, useRef } from "react";
 import { match } from "ts-pattern";
-import { css, cx } from "../../styled-system/css";
-import {
-  Center,
-  Flex,
-  HStack,
-  Stack,
-  Wrap,
-  styled,
-} from "../../styled-system/jsx";
-import { cq } from "../../styled-system/patterns";
+import { css, cx } from "#styled-system/css";
+import { Center, Flex, HStack, Stack, Wrap, styled } from "#styled-system/jsx";
+import { cq } from "#styled-system/patterns";
 import { Declaration, checkboxStyles } from "./declaration";
 import { DeclarationGroup } from "./declaration-group";
 import { DeclarationList } from "./declaration-list";
 import { HighlightMatch } from "./highlight-match";
 import { InsertInlineRow } from "./insert-inline-row";
-import { symbols } from "./lib/rules";
+import { symbols } from "./lib/symbols";
 import { useInspectedResult } from "./lib/use-inspect-result";
-import { usePlatformClass } from "./lib/use-platform-class";
 import { useUndoRedo } from "./lib/use-undo-redo";
 import { store } from "./store";
 import { Toolbar } from "./toolbar";
-import { HistoryState, overrideKey } from "./types";
+import type { HistoryState } from "./devtools-types";
 
 const EmptyState = () => (
   <Center px="4" h="100%">
@@ -67,9 +59,6 @@ export function SidebarPane() {
   const selectedLayers = useSelector(store, (s) => s.context.selectedLayers);
   const isExpanded = useSelector(store, (s) => s.context.isExpanded);
   const filter = useSelector(store, (s) => s.context.filter);
-
-  // Add platform class to apply targeted styles
-  usePlatformClass();
 
   const computed = useSelector(store, (s) => s.context.computed);
 
@@ -211,7 +200,7 @@ export function SidebarPane() {
                         setOverride: (value, computed) =>
                           setOverrides((overrides) => ({
                             ...overrides,
-                            [overrideKey]: key,
+                            [symbols.overrideKey]: key,
                             [key]: value != null ? { value, computed } : null,
                           })),
                       }}

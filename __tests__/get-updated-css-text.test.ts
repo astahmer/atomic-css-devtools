@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { inspectApi } from "../entrypoints/devtools-pane/inspect-api";
+import { inspectApi } from "../src/inspect-api";
 
 const first = inspectApi.getUpdatedCssText({
   cssText: "",

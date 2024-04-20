@@ -1,14 +1,21 @@
 import { asserts } from "./asserts";
 import { cssTextToEntries } from "./lib/css-text-to-entries";
 import {
-  getComputedLayerName,
+  getMatchedLayerFullName,
   getLayer,
-  getLayerName,
+  getLayerBlockFullName,
   getMedia,
-  reorderNestedLayers,
 } from "./lib/rules";
+import { reorderNestedLayers } from "./lib/reorder-nested-layers";
+import {
+  MatchedStyleRule,
+  WindowEnv,
+  MatchedRule,
+  MatchedMediaRule,
+  MatchedLayerBlockRule,
+} from "./devtools-types";
 
-class InspectAPI {
+export class InspectAPI {
   traverseSelectors(selectors: string[]): HTMLElement | null {
     let currentContext: Document | Element | ShadowRoot = document; // Start at the main document
 
@@ -143,7 +150,7 @@ class InspectAPI {
       const parentLayer = getLayer(rule);
 
       if (parentLayer) {
-        rule.layer = getComputedLayerName(parentLayer);
+        rule.layer = getMatchedLayerFullName(parentLayer);
 
         if (!layers.has(rule.layer)) {
           layers.set(rule.layer, []);
@@ -235,7 +242,7 @@ class InspectAPI {
               if (asserts.isCSSLayerStatementRule(rule)) {
                 rule.nameList.forEach((layer) => seenLayers.add(layer));
               } else if (asserts.isCSSLayerBlockRule(rule)) {
-                seenLayers.add(getLayerName(rule));
+                seenLayers.add(getLayerBlockFullName(rule));
               }
             }
           );
@@ -612,47 +619,3 @@ export const inspectApi = new InspectAPI();
 export type InspectResult = NonNullable<
   Awaited<ReturnType<typeof inspectApi.inspectElement>>
 >;
-
-export interface MatchedStyleRule {
-  type: "style";
-  source: string;
-  selector: string;
-  parentRule: MatchedMediaRule | MatchedLayerBlockRule | null;
-  style: Record<string, string>;
-  /**
-   * Computed layer name from traversing `parentRule`
-   */
-  layer?: string;
-  /**
-   * Computed media query from traversing `parentRule`
-   */
-  media?: string;
-}
-
-export interface MatchedMediaRule {
-  type: "media";
-  source: string;
-  parentRule: MatchedLayerBlockRule | null;
-  media: string;
-}
-
-export interface MatchedLayerBlockRule {
-  type: "layer";
-  source: string;
-  parentRule: MatchedLayerBlockRule | null;
-  layer: string;
-}
-
-export type MatchedRule =
-  | MatchedStyleRule
-  | MatchedMediaRule
-  | MatchedLayerBlockRule;
-
-export interface WindowEnv {
-  location: string;
-  widthPx: number;
-  heightPx: number;
-  deviceWidthPx: number;
-  deviceHeightPx: number;
-  dppx: number;
-}

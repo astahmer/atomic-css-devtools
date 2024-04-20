@@ -1,6 +1,7 @@
 import { createStore } from "@xstate/store";
-import { InspectResult, MatchedRule } from "./inspect-api";
-import { computeStyles, filterRulesByEnv, symbols } from "./lib/rules";
+import { InspectResult } from "./inspect-api";
+import { computeStyles, filterMatchedRulesByEnv } from "./lib/rules";
+import type { MatchedRule } from "./devtools-types";
 
 export const store = createStore(
   {
@@ -49,7 +50,7 @@ export const store = createStore(
     setInspected: (ctx, event: { inspected: InspectResult | null }) => {
       if (!event.inspected) return { ...ctx, inspected: event.inspected };
 
-      const rules = filterRulesByEnv(event.inspected.rules, {
+      const rules = filterMatchedRulesByEnv(event.inspected.rules, {
         ...event.inspected.env,
         ...ctx.env,
       });
@@ -84,7 +85,7 @@ export const store = createStore(
         ...ctx.inspected.env,
         ...event.env,
       };
-      const rules = filterRulesByEnv(ctx.inspected?.rules ?? [], env);
+      const rules = filterMatchedRulesByEnv(ctx.inspected?.rules ?? [], env);
       return {
         ...ctx,
         env: event.env,

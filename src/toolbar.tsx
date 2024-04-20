@@ -8,13 +8,14 @@ import {
   RefreshCwIcon,
   ScanEyeIcon,
 } from "lucide-react";
-import { css } from "../../styled-system/css";
-import { Flex, styled } from "../../styled-system/jsx";
-import CrossCircleFilled from "../../public/cross-circle-filled.svg";
+import { css } from "#styled-system/css";
+import { Flex, styled } from "#styled-system/jsx";
+import CrossCircleFilled from "../public/cross-circle-filled.svg";
 import { Tooltip } from "#components/tooltip";
-import { InspectResult } from "./inspect-api";
-import { computeStyles, symbols } from "./lib/rules";
+import { computeStyles } from "./lib/rules";
+import { symbols } from "./lib/symbols";
 import { store } from "./store";
+import type { InspectResult } from "./inspect-api";
 
 interface ToolbarProps {
   inspected: InspectResult | null;

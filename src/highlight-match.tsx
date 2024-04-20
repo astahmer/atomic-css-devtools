@@ -1,6 +1,6 @@
 import { camelCaseProperty, esc } from "@pandacss/shared";
-import { styled } from "../../styled-system/jsx";
-import { SystemStyleObject } from "../../styled-system/types";
+import { styled } from "#styled-system/jsx";
+import { SystemStyleObject } from "#styled-system/types";
 
 export const HighlightMatch = ({
   children,

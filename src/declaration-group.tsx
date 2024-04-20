@@ -1,8 +1,8 @@
 import { Collapsible } from "@ark-ui/react";
 import { ReactNode } from "react";
-import { css, cx } from "../../styled-system/css";
-import { styled } from "../../styled-system/jsx";
-import { flex } from "../../styled-system/patterns";
+import { css, cx } from "#styled-system/css";
+import { styled } from "#styled-system/jsx";
+import { flex } from "#styled-system/patterns";
 
 interface DeclarationGroupProps {
   label: ReactNode;
