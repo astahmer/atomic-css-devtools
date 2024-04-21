@@ -63,10 +63,17 @@ export const store = createStore(
 
       // Whenever the available layers changes, we reset the selected layers to the available layers
       // (layersOrder is gathered from all stylesheets, whereas `availableLayers` is the layers that are actually applied to the element)
-      const diff = diffLayers(
+      const availableLayersDiff = diffLayers(
         ctx.inspected?.layersOrder ?? [],
         event.inspected.layersOrder
       );
+
+      const elementLayersDiff = diffLayers(
+        ctx.availableLayers,
+        Array.from(computed.rulesByLayer.keys())
+      );
+
+      const isSame = availableLayersDiff.isSame && elementLayersDiff.isSame;
 
       return {
         ...ctx,
@@ -75,7 +82,7 @@ export const store = createStore(
         computed,
         //
         availableLayers: sortedAvailableLayers,
-        selectedLayers: diff.isSame ? ctx.selectedLayers : availableLayers,
+        selectedLayers: isSame ? ctx.selectedLayers : availableLayers,
       };
     },
     setEnv: (ctx, event: { env: InspectResult["env"] | null }) => {
