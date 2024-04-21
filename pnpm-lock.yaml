@@ -26,6 +26,9 @@ dependencies:
   '@zag-js/interact-outside':
     specifier: ^0.45.0
     version: 0.45.0
+  '@zag-js/popper':
+    specifier: ^0.47.0
+    version: 0.47.0
   lucide-react:
     specifier: ^0.365.0
     version: 0.365.0(react@18.2.0)
@@ -1804,6 +1807,10 @@ packages:
     resolution: {integrity: sha512-8HuQcifb+2VQ9NJwqhI2kjefw9V+B1w00xbPk+pUszaYJ4VFM8y4nu9ifXvMmhoPXrGKSg5F8RuOq7sPn8HMmw==}
     dev: false
 
+  /@zag-js/dom-query@0.47.0:
+    resolution: {integrity: sha512-B1wZ3o/8uHOn75BkfcT45zwc23hqZJ/gUF7Z6UrmxWFNpr6JKiDNvOW+QaAKzYNEpvz3NnUOB4tEY0IhDms7Sg==}
+    dev: false
+
   /@zag-js/editable@0.38.0:
     resolution: {integrity: sha512-omOyINSgPX92E5D3RBexMyRvjLa4Zq5UUppG3FlA3kEi6DSU4hEj661vnVwc4ihhyWgWZh6KSKDE2m9fd6KEsA==}
     dependencies:
@@ -1960,6 +1967,14 @@ packages:
       '@floating-ui/dom': 1.6.3
       '@zag-js/dom-query': 0.38.0
       '@zag-js/utils': 0.38.0
+
+  /@zag-js/popper@0.47.0:
+    resolution: {integrity: sha512-9iRd+48sEx7l68VRtoUDjj55/HnMp8eSNRbR3qZm+lcPLwz4Ljk80ZxecqQfAakTA/R70eP2jhBqOt29r2ecoQ==}
+    dependencies:
+      '@floating-ui/dom': 1.6.3
+      '@zag-js/dom-query': 0.47.0
+      '@zag-js/utils': 0.47.0
+    dev: false
 
   /@zag-js/presence@0.38.0:
     resolution: {integrity: sha512-Rio2mqo98+o0olxzG4MffFizFQRHJzL/HL6AFRi2G0u2HdGTHDGIMfACYGPLrq2JmBW+wIbO37A3KHiSYtfdtw==}
@@ -2184,6 +2199,10 @@ packages:
 
   /@zag-js/utils@0.45.0:
     resolution: {integrity: sha512-DR5z7b4d0ZoqY/jzq/QA6g5b6ClPqJwna8YMxaplL3+uTey6I41UPvChSnsksr8HHf384m0sVzl2dMhzGVb47Q==}
+    dev: false
+
+  /@zag-js/utils@0.47.0:
+    resolution: {integrity: sha512-Pz8Mpi4G9DTgQKWYKzZkWBQ2C1j/OUGNso/s3VL78MGUGKQUa8rJDRCDBByJwlVt/YBiSe73NNyQkf3jujOL3g==}
     dev: false
 
   /@zag-js/visually-hidden@0.38.0:
