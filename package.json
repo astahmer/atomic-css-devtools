@@ -2,7 +2,7 @@
   "name": "atomic-css-devtools",
   "description": "manifest.json description",
   "private": true,
-  "version": "0.0.6-dev",
+  "version": "0.0.8-dev",
   "type": "module",
   "scripts": {
     "dev": "wxt",
