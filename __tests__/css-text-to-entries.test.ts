@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { cssTextToEntries } from "../entrypoints/devtools-pane/lib/css-text-to-entries";
+import { cssTextToEntries } from "../src/lib/css-text-to-entries";
 
 test("return all declarations", () => {
   expect(cssTextToEntries("color: red; color: blue !important; color: green;"))
