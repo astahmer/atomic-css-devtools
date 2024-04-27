@@ -1,14 +1,9 @@
+import type { WindowEnv } from "./devtools-types";
 import type {
   InspectAPI,
-  InlineStyleUpdate,
   RemoveInlineStyle,
+  UpdateStyleRuleMessage,
 } from "./inspect-api";
-import type { WindowEnv } from "./devtools-types";
-
-interface UpdateStyleRuleMessage extends Omit<InlineStyleUpdate, "mode"> {
-  selectors: string[];
-  kind: "cssRule" | "inlineStyle"; // TODO get rid of this, use symbols.inlineStyleSelector instead
-}
 
 interface InlineStyleReturn {
   hasUpdated: boolean;

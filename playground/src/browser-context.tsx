@@ -54,17 +54,17 @@ const contentScript: ContentScriptApi = {
   inspectElement: async () => {
     return inspectApi.inspectElement([inspectedElementSelector]);
   },
-  appendInlineStyle: () => {
-    return noop;
+  computePropertyValue: async (message) => {
+    return inspectApi.computePropertyValue(message.selectors, message.prop);
   },
-  removeInlineStyle: () => {
-    return noop;
+  updateStyleRule: async (message) => {
+    return inspectApi.updateStyleAction(message);
   },
-  computePropertyValue: () => {
-    return noop;
+  appendInlineStyle: async (message) => {
+    return inspectApi.appendInlineStyleAction(message);
   },
-  updateStyleRule: () => {
-    return noop;
+  removeInlineStyle: async (message) => {
+    return inspectApi.removeInlineStyleAction(message);
   },
 };
 

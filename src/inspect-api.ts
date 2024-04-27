@@ -322,7 +322,76 @@ export class InspectAPI {
     return computed.getPropertyValue(prop);
   }
 
-  updateStyleRule({
+  updateStyleAction(params: UpdateStyleRuleMessage) {
+    let hasUpdated, computedValue;
+    if (params.kind === "inlineStyle") {
+      const element = inspectApi.traverseSelectors(params.selectors);
+      if (!element) return { hasUpdated: false, computedValue: null };
+
+      hasUpdated = inspectApi.updateInlineStyle({
+        element,
+        prop: params.prop,
+        value: params.value,
+        atIndex: params.atIndex,
+        isCommented: params.isCommented,
+        mode: "edit",
+      });
+    } else {
+      let doc = document;
+      if (params.selectors.length > 1) {
+        const element = inspectApi.traverseSelectors(params.selectors);
+        if (!element) return { hasUpdated: false, computedValue: null };
+
+        doc = element.getRootNode() as Document;
+      }
+
+      hasUpdated = inspectApi.updateCssStyleRule({
+        doc,
+        selector: params.selectors[0],
+        prop: params.prop,
+        value: params.value,
+      });
+    }
+
+    if (hasUpdated) {
+      computedValue = inspectApi.computePropertyValue(
+        params.selectors,
+        params.prop
+      );
+    }
+
+    return {
+      hasUpdated: Boolean(hasUpdated),
+      computedValue: computedValue ?? null,
+    };
+  }
+
+  appendInlineStyleAction(params: Omit<UpdateStyleRuleMessage, "kind">) {
+    const element = inspectApi.traverseSelectors(params.selectors);
+    if (!element) return { hasUpdated: false, computedValue: null };
+
+    const hasUpdated = inspectApi.updateInlineStyle({
+      element,
+      prop: params.prop,
+      value: params.value,
+      atIndex: params.atIndex,
+      isCommented: params.isCommented,
+      mode: "insert",
+    });
+    if (!hasUpdated) return { hasUpdated: false, computedValue: null };
+
+    const computedValue = inspectApi.computePropertyValue(
+      params.selectors,
+      params.prop
+    );
+
+    return {
+      hasUpdated: Boolean(hasUpdated),
+      computedValue: computedValue ?? null,
+    };
+  }
+
+  updateCssStyleRule({
     doc,
     selector,
     prop,
@@ -362,7 +431,33 @@ export class InspectAPI {
     }
   }
 
-  removeInlineStyle(params: RemoveInlineStyle & { element: HTMLElement }) {
+  removeInlineStyleAction(
+    params: RemoveInlineStyle &
+      Pick<UpdateStyleRuleMessage, "selectors" | "prop">
+  ) {
+    const element = inspectApi.traverseSelectors(params.selectors);
+    if (!element) return { hasUpdated: false, computedValue: null };
+
+    const hasUpdated = inspectApi.removeInlineStyleDeclaration({
+      element,
+      atIndex: params.atIndex,
+    });
+    if (!hasUpdated) return { hasUpdated: false, computedValue: null };
+
+    const computedValue = inspectApi.computePropertyValue(
+      params.selectors,
+      params.prop
+    );
+
+    return {
+      hasUpdated: Boolean(hasUpdated),
+      computedValue: computedValue ?? null,
+    };
+  }
+
+  removeInlineStyleDeclaration(
+    params: RemoveInlineStyle & { element: HTMLElement }
+  ) {
     const { element, atIndex } = params;
     if (element) {
       const cssText = element.getAttribute("style") || "";
@@ -619,3 +714,9 @@ export const inspectApi = new InspectAPI();
 export type InspectResult = NonNullable<
   Awaited<ReturnType<typeof inspectApi.inspectElement>>
 >;
+
+export interface UpdateStyleRuleMessage
+  extends Omit<InlineStyleUpdate, "mode"> {
+  selectors: string[];
+  kind: "cssRule" | "inlineStyle"; // TODO get rid of this, use symbols.inlineStyleSelector instead
+}

@@ -40,93 +40,15 @@ export default defineContentScript({
       );
     });
     onDevtoolsMessage.updateStyleRule((message) => {
-      let hasUpdated, computedValue;
-      if (message.data.kind === "inlineStyle") {
-        const element = inspectApi.traverseSelectors(message.data.selectors);
-        if (!element) return { hasUpdated: false, computedValue: null };
-
-        hasUpdated = inspectApi.updateInlineStyle({
-          element,
-          prop: message.data.prop,
-          value: message.data.value,
-          atIndex: message.data.atIndex,
-          isCommented: message.data.isCommented,
-          mode: "edit",
-        });
-      } else {
-        let doc = document;
-        if (message.data.selectors.length > 1) {
-          const element = inspectApi.traverseSelectors(message.data.selectors);
-          if (!element) return { hasUpdated: false, computedValue: null };
-
-          doc = element.getRootNode() as Document;
-        }
-
-        hasUpdated = inspectApi.updateStyleRule({
-          doc,
-          selector: message.data.selectors[0],
-          prop: message.data.prop,
-          value: message.data.value,
-        });
-      }
-
-      if (hasUpdated) {
-        computedValue = inspectApi.computePropertyValue(
-          message.data.selectors,
-          message.data.prop
-        );
-      }
-
-      return {
-        hasUpdated: Boolean(hasUpdated),
-        computedValue: computedValue ?? null,
-      };
+      return inspectApi.updateStyleAction(message.data);
     });
 
     onDevtoolsMessage.appendInlineStyle((message) => {
-      const element = inspectApi.traverseSelectors(message.data.selectors);
-      if (!element) return { hasUpdated: false, computedValue: null };
-
-      const hasUpdated = inspectApi.updateInlineStyle({
-        element,
-        prop: message.data.prop,
-        value: message.data.value,
-        atIndex: message.data.atIndex,
-        isCommented: message.data.isCommented,
-        mode: "insert",
-      });
-      if (!hasUpdated) return { hasUpdated: false, computedValue: null };
-
-      const computedValue = inspectApi.computePropertyValue(
-        message.data.selectors,
-        message.data.prop
-      );
-
-      return {
-        hasUpdated: Boolean(hasUpdated),
-        computedValue: computedValue ?? null,
-      };
+      return inspectApi.appendInlineStyleAction(message.data);
     });
 
     onDevtoolsMessage.removeInlineStyle((message) => {
-      const element = inspectApi.traverseSelectors(message.data.selectors);
-      if (!element) return { hasUpdated: false, computedValue: null };
-
-      const hasUpdated = inspectApi.removeInlineStyle({
-        element,
-        atIndex: message.data.atIndex,
-      });
-      if (!hasUpdated) return { hasUpdated: false, computedValue: null };
-
-      const computedValue = inspectApi.computePropertyValue(
-        message.data.selectors,
-        message.data.prop
-      );
-
-      return {
-        hasUpdated: Boolean(hasUpdated),
-        computedValue: computedValue ?? null,
-      };
+      return inspectApi.removeInlineStyleAction(message.data);
     });
   },
 });
