@@ -2,7 +2,7 @@
   "name": "atomic-css-devtools",
   "description": "manifest.json description",
   "private": true,
-  "version": "0.0.6-dev",
+  "version": "0.0.7-dev",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -15,7 +15,11 @@
     "postinstall": "wxt prepare",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
-    "play": "vite"
+    "play": "vite",
+    "e2e": "pnpm exec playwright test",
+    "e2e:ui": "pnpm exec playwright test --ui",
+    "e2e:codegen": "pnpm exec playwright codegen localhost:4173",
+    "e2e:preview": "vite --port 4173"
   },
   "imports": {
     "#components/*": "./components/*",
@@ -42,6 +46,8 @@
   "devDependencies": {
     "@pandacss/dev": "^0.37.1",
     "@park-ui/panda-preset": "^0.36.1",
+    "@playwright/test": "^1.43.1",
+    "@types/node": "^20.12.7",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
