@@ -16,7 +16,7 @@ export interface Evaluator {
     fn: T,
     ...args: WithoutFirst<T>
   ) => Promise<ReturnType<T>>;
-  copy: (valueToCopy: string) => void;
+  copy: (valueToCopy: string) => Promise<void>;
   inspect: () => Promise<InspectResult | null | undefined>;
   onSelectionChanged: (
     cb: (element: InspectResult | null) => void

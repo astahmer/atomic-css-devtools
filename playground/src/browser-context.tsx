@@ -31,7 +31,7 @@ const evaluator: Evaluator = {
       }
     });
   },
-  copy: (valueToCopy: string) => {
+  copy: async (valueToCopy: string) => {
     navigator.clipboard.writeText(valueToCopy);
   },
   inspect: async () => {
@@ -63,6 +63,9 @@ const contentScript: ContentScriptApi = {
   },
   removeInlineStyle: async (message) => {
     return inspectApi.removeInlineStyleAction(message);
+  },
+  highlightSelector: async (message) => {
+    return inspectApi.highlightSelector(message);
   },
 };
 

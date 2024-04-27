@@ -50,6 +50,10 @@ export default defineContentScript({
     onDevtoolsMessage.removeInlineStyle((message) => {
       return inspectApi.removeInlineStyleAction(message.data);
     });
+
+    onDevtoolsMessage.highlightSelector((message) => {
+      return inspectApi.highlightSelector(message.data);
+    });
   },
 });
 

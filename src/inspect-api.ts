@@ -14,6 +14,8 @@ import {
   MatchedMediaRule,
   MatchedLayerBlockRule,
 } from "./devtools-types";
+import { getHighlightsStyles } from "./lib/get-highlights-styles";
+import { dashCase } from "@pandacss/shared";
 
 export class InspectAPI {
   traverseSelectors(selectors: string[]): HTMLElement | null {
@@ -511,6 +513,62 @@ export class InspectAPI {
 
     split[atIndex] = declaration;
     return split.filter(Boolean).join(";") + ";";
+  }
+
+  private prevHighlightedSelector: string | null = null;
+
+  highlightSelector(params: { selectors: string[] }) {
+    const { selectors } = params;
+
+    // Remove any existing highlight
+    document.querySelectorAll("[data-selector-highlighted]").forEach((el) => {
+      if (el instanceof HTMLElement) {
+        delete el.dataset.selectorHighlighted;
+      }
+    });
+
+    let container = document.querySelector(
+      "[data-selector-highlighted-container]"
+    );
+    if (!container) {
+      container = document.createElement("div") as HTMLElement;
+      container.setAttribute("data-selector-highlighted-container", "");
+      container.setAttribute("style", "pointer-events: none;");
+      document.body.appendChild(container);
+    }
+
+    // Explicitly clear container if no selectors were passed
+    if (!selectors.length) {
+      container.innerHTML = "";
+      this.prevHighlightedSelector = null;
+      return;
+    }
+
+    // Add highlight to the elements matching the selectors
+    // Ignore selectors that contain `*` because they are too broad
+    const selector = selectors.filter((s) => !s.includes("*")).join(",");
+    if (!selector) return;
+    if (this.prevHighlightedSelector === selector) return;
+
+    // Clear container children if no selectors are left
+    container.innerHTML = "";
+
+    this.prevHighlightedSelector = selector;
+
+    document.querySelectorAll(selector).forEach((el) => {
+      if (el instanceof HTMLElement) {
+        el.dataset.selectorHighlighted = "";
+
+        const highlights = getHighlightsStyles(el);
+        highlights.forEach((styles) => {
+          const highlight = document.createElement("div") as HTMLElement;
+          highlight.style.cssText = Object.entries(styles)
+            .map(([prop, value]) => `${dashCase(prop)}: ${value}`)
+            .join(";");
+          container.appendChild(highlight);
+        });
+      }
+    });
   }
 
   private createSerializer() {

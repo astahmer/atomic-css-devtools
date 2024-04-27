@@ -31,7 +31,16 @@ function Playground() {
               p: "4",
             })}
           >
-            Atomic CSS Devtools [data-inspected-element]
+            Atomic CSS Devtools
+          </div>
+          <div
+            className={css({
+              fontSize: "4xl",
+              p: "4",
+              color: "blue.400",
+            })}
+          >
+            [data-inspected-element]
           </div>
         </HStack>
         <HStack>

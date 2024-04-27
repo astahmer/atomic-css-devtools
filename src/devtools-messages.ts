@@ -30,6 +30,10 @@ export interface ContentScriptEvents {
     RemoveInlineStyle & Pick<UpdateStyleRuleMessage, "selectors" | "prop">,
     InlineStyleReturn
   >;
+  highlightSelector: DevtoolsMessage<
+    { selectors: string[] },
+    ReturnType<InspectAPI["highlightSelector"]>
+  >;
 }
 
 export type ContentScriptApi = {

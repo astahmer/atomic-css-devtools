@@ -338,6 +338,27 @@ export const Declaration = (props: DeclarationProps) => {
               onClick={async () => {
                 await evaluator.copy(prettySelector);
               }}
+              onMouseOver={() => {
+                contentScript.highlightSelector({
+                  selectors:
+                    rule.selector === symbols.inlineStyleSelector
+                      ? inspected.elementSelectors
+                      : [rule.selector],
+                });
+              }}
+              onMouseOut={(e) => {
+                // Skip if the mouse is hovering same selector
+                if (
+                  e.target instanceof HTMLElement &&
+                  e.relatedTarget instanceof HTMLElement &&
+                  e.target.innerText === e.relatedTarget.innerText
+                ) {
+                  return;
+                }
+
+                // Clear highlights
+                contentScript.highlightSelector({ selectors: [] });
+              }}
             >
               <HighlightMatch highlight={filter}>
                 {prettySelector}
