@@ -5,7 +5,6 @@
   important)
 
 - compactCss inline style
-- color picker on color previews ?
 - on selector click, show a new panel with the selector and the matching
   elements -> allow editing the selector from there, allow adding styles in that
   selector

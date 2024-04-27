@@ -29,6 +29,7 @@
     "@webext-core/messaging": "^1.4.0",
     "@webext-core/proxy-service": "^1.2.0",
     "@xstate/store": "^0.0.3",
+    "@zag-js/color-utils": "^0.48.0",
     "@zag-js/interact-outside": "^0.45.0",
     "@zag-js/popper": "^0.47.0",
     "lucide-react": "^0.365.0",

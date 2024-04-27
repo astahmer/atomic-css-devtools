@@ -23,6 +23,9 @@ dependencies:
   '@xstate/store':
     specifier: ^0.0.3
     version: 0.0.3(react@18.2.0)
+  '@zag-js/color-utils':
+    specifier: ^0.48.0
+    version: 0.48.0
   '@zag-js/interact-outside':
     specifier: ^0.45.0
     version: 0.45.0
@@ -1721,6 +1724,12 @@ packages:
     dependencies:
       '@zag-js/numeric-range': 0.38.0
 
+  /@zag-js/color-utils@0.48.0:
+    resolution: {integrity: sha512-OsisuSw6M5YnoPSh8myKZOCpNs21YJ9EoHIv6dHr/RNXfiOUyeEGFNI77Si1XoSpVmXLEmCrS1uEUE3MpDJiSg==}
+    dependencies:
+      '@zag-js/numeric-range': 0.48.0
+    dev: false
+
   /@zag-js/combobox@0.38.0:
     resolution: {integrity: sha512-MT+KMH6FAGvlWeKPck/SLV26dxxrGWGvHQoIPZtJyJoUjPdw8vuw7QvUF7YTx+bUoQwDL0nn3EBYJpGPSAJ7/Q==}
     dependencies:
@@ -1924,6 +1933,10 @@ packages:
 
   /@zag-js/numeric-range@0.38.0:
     resolution: {integrity: sha512-Qfe0CQhIPVmmAFPi2ySq83AuXchd4uJvcDnQAeKZK9oVqLX8ol3ZOL5iv2ugYtHA1WoQftbNwGx7Zs4/JUWqvQ==}
+
+  /@zag-js/numeric-range@0.48.0:
+    resolution: {integrity: sha512-2YHUUpJiMOJzss2WPgECcA7zImPPsywCtAHV2YUqi7+hlMychiwCa030PdcWbMlGVCS3HRwaIiixEh4rpuMRSA==}
+    dev: false
 
   /@zag-js/pagination@0.38.0:
     resolution: {integrity: sha512-C9xduN6G5ewXugRU4pijtTibSBhOY3IXf/BuFewiPTrxXLAGtxl8UyLJ+8MrlOjMAQgxLT3Q5bbVOUjy2nVdtA==}

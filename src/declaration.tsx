@@ -1,3 +1,4 @@
+import { parseColor } from "@zag-js/color-utils";
 import * as TooltipPrimitive from "#components/tooltip";
 import { Portal } from "@ark-ui/react";
 import { useSelector } from "@xstate/store/react";
@@ -76,6 +77,7 @@ export const Declaration = (props: DeclarationProps) => {
   const showSelector = useSelector(store, (s) => s.context.showSelector);
 
   const { evaluator, contentScript } = useDevtoolsContext();
+  const colorPickerId = useId();
 
   return (
     <styled.code
@@ -155,16 +157,42 @@ export const Declaration = (props: DeclarationProps) => {
       </styled.label>
       <styled.span mr="6px">:</styled.span>
       {isColor(computedValue) && (
-        <styled.div
-          alignSelf="center"
-          display="inline-block"
-          border="1px solid var(--sys-color-neutral-outline, #757575)"
-          width="9.6px"
-          height="9.6px"
-          mx="4px"
-          style={{ backgroundColor: computedValue }}
-          aria-label="Color preview"
-        />
+        <label htmlFor={colorPickerId}>
+          {rule.selector === symbols.inlineStyleSelector && (
+            <input
+              id={colorPickerId}
+              hidden
+              type="color"
+              value={parseColor(computedValue).toString("hex")}
+              onChange={(e) => {
+                if (rule.selector !== symbols.inlineStyleSelector) {
+                  return;
+                }
+
+                const update = e.target.value;
+
+                contentScript.updateStyleRule({
+                  selectors: inspected.elementSelectors,
+                  prop: hypenateProperty(prop),
+                  value: update,
+                  kind: "inlineStyle",
+                  atIndex: index,
+                  isCommented: false,
+                });
+              }}
+            />
+          )}
+          <styled.div
+            alignSelf="center"
+            display="inline-block"
+            border="1px solid var(--sys-color-neutral-outline, #757575)"
+            width="9.6px"
+            height="9.6px"
+            mx="4px"
+            style={{ backgroundColor: computedValue }}
+            aria-label="Color preview"
+          />
+        </label>
       )}
       <EditableValue
         index={index}
