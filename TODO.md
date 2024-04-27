@@ -4,7 +4,6 @@
   declaration for the same prop (unless atomic has important, unless style has
   important)
 
-- compactCss inline style
 - on selector click, show a new panel with the selector and the matching
   elements -> allow editing the selector from there, allow adding styles in that
   selector

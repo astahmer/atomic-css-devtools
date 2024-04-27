@@ -26,7 +26,7 @@ interface DeclarationProps
   matchValue: string;
   rule: MatchedStyleRule;
   inspected: InspectResult;
-  disabled?: boolean;
+  hasLineThrough?: boolean;
 }
 
 export const checkboxStyles = css.raw({
@@ -47,7 +47,7 @@ export const Declaration = (props: DeclarationProps) => {
     inspected,
     override,
     setOverride,
-    disabled,
+    hasLineThrough,
     isRemovable,
     refresh,
   } = props;
@@ -86,7 +86,9 @@ export const Declaration = (props: DeclarationProps) => {
       mr="2"
       // var(--sys-color-state-hover-on-subtle)
       _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
-      textDecoration={enabled && !disabled ? "none" : "line-through !important"}
+      textDecoration={
+        !enabled || hasLineThrough ? "line-through !important" : "none"
+      }
       data-declaration={index}
     >
       <input

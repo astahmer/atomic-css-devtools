@@ -15,7 +15,9 @@ import { symbols } from "./lib/symbols";
 import { OverrideMap } from "./devtools-types";
 import { Declaration } from "./declaration";
 import { useDevtoolsContext } from "./devtools-context";
-import { dashCase } from "@pandacss/shared";
+import { camelCaseProperty, dashCase } from "@pandacss/shared";
+import { compactCSS } from "./lib/compact-css";
+import { pick } from "./lib/pick";
 
 interface InsertInlineRowProps {
   inspected: InspectResult;
@@ -300,7 +302,14 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
     </Flex>
   );
 
-  const applied = Object.fromEntries(inspected.styleEntries);
+  const styles = Object.fromEntries(
+    inspected.styleEntries.map(([prop, value]) => [
+      camelCaseProperty(prop),
+      value,
+    ])
+  );
+  const keys = compactCSS(styles);
+  const applied = pick(styles, keys.pick);
 
   return (
     <Flex
@@ -354,7 +363,9 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
                         source: symbols.inlineStyleSelector,
                       },
                       inspected,
-                      disabled: applied[prop] !== value || isAppliedLater,
+                      hasLineThrough:
+                        applied[camelCaseProperty(prop)] !== value ||
+                        isAppliedLater,
                       isRemovable: true,
                       refresh: refresh,
                       override: overrides?.[key] ?? null,
