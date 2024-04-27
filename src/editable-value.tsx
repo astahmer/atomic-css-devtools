@@ -61,9 +61,10 @@ export const EditableValue = (props: EditableValueProps) => {
   const [key, setKey] = useState(0);
 
   const propValue = override?.value || matchValue;
+  const kind =
+    selector === symbols.inlineStyleSelector ? "inlineStyle" : "cssRule";
+
   const updateValue = (update: string) => {
-    const kind =
-      selector === symbols.inlineStyleSelector ? "inlineStyle" : "cssRule";
     return contentScript.updateStyleRule({
       selectors: kind === "inlineStyle" ? elementSelector : [selector],
       prop: hypenateProperty(prop),
@@ -74,8 +75,26 @@ export const EditableValue = (props: EditableValueProps) => {
     });
   };
 
+  const removeDeclaration = async () => {
+    const { hasUpdated, computedValue } = await contentScript.removeInlineStyle(
+      {
+        selectors: elementSelector,
+        prop,
+        atIndex: index,
+      }
+    );
+
+    if (!hasUpdated) return;
+    setOverride(null, computedValue);
+    refresh?.();
+  };
+
   const overrideValue = async (update: string) => {
-    if (!update || update === propValue) return;
+    if (update === "") {
+      if (!isRemovable) return;
+      return removeDeclaration();
+    }
+    if (update === propValue) return;
 
     const { hasUpdated, computedValue } = await updateValue(update);
     if (hasUpdated) {
@@ -147,21 +166,7 @@ export const EditableValue = (props: EditableValueProps) => {
               cursor: "pointer",
             })}
             onClick={() => {
-              const snapshot = store.getSnapshot();
-              const inspected = snapshot.context.inspected;
-              if (!inspected) return;
-
-              return contentScript
-                .removeInlineStyle({
-                  selectors: inspected.elementSelectors,
-                  prop,
-                  atIndex: index,
-                })
-                .then(({ hasUpdated, computedValue }) => {
-                  if (!hasUpdated) return;
-                  setOverride(null, computedValue);
-                  refresh?.();
-                });
+              return removeDeclaration();
             }}
           />
         </Tooltip>

@@ -3,7 +3,6 @@
 - line-through on atomic class row declaration when there's an inline style
   declaration for the same prop (unless atomic has important, unless style has
   important)
-- remove inline style line when backspace + no value
 - automatically camelCase to dash-case when adding a new inline style
   declaration
 - prevent adding inline style declaration with invalid property name (it
