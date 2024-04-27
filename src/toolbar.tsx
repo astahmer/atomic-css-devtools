@@ -47,8 +47,9 @@ export const Toolbar = (props: ToolbarProps) => {
     <Flex alignItems="center" position="relative" zIndex="2" px="5px">
       <styled.div position="relative" flex="1">
         <styled.input
-          mt="1px"
+          aria-label="Filter"
           placeholder="Filter"
+          mt="1px"
           w="100%"
           overflow="hidden"
           whiteSpace="nowrap"
@@ -98,6 +99,7 @@ export const Toolbar = (props: ToolbarProps) => {
       {import.meta.env.DEV && (
         <Tooltip content="Log inspected element">
           <ToolbarButton
+            aria-label="Log inspected element"
             onClick={() =>
               console.log(
                 inspected,
@@ -117,7 +119,7 @@ export const Toolbar = (props: ToolbarProps) => {
         </Tooltip>
       )}
       <Tooltip content="Refresh">
-        <ToolbarButton onClick={() => refresh()}>
+        <ToolbarButton onClick={() => refresh()} aria-label="Refresh">
           <RefreshCwIcon className={toolbarIcon} />
         </ToolbarButton>
       </Tooltip>
@@ -129,6 +131,7 @@ export const Toolbar = (props: ToolbarProps) => {
       >
         <Collapsible.Trigger asChild>
           <ToolbarButton
+            aria-label="Toggle layer visibility"
             aria-selected={isExpanded}
             disabled={isExpandButtonDisabled}
             onClick={() => {
@@ -145,6 +148,7 @@ export const Toolbar = (props: ToolbarProps) => {
       <Tooltip content="Group elements by @layer">
         <Collapsible.Trigger asChild>
           <ToolbarButton
+            aria-label="Group elements by @layer"
             aria-selected={groupByLayer}
             onClick={() => {
               store.send({
@@ -159,6 +163,7 @@ export const Toolbar = (props: ToolbarProps) => {
       </Tooltip>
       <Tooltip content="Group elements by @media">
         <ToolbarButton
+          aria-label="Group elements by @media"
           aria-selected={groupByMedia}
           onClick={() => {
             store.send({
@@ -173,6 +178,7 @@ export const Toolbar = (props: ToolbarProps) => {
       <Tooltip content="Show selectors">
         <Collapsible.Trigger asChild>
           <ToolbarButton
+            aria-label="Show selectors"
             aria-selected={showSelector}
             className="group"
             display="flex"

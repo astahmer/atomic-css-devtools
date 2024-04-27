@@ -147,6 +147,7 @@ export const Declaration = (props: DeclarationProps) => {
           color: "var(--sys-color-token-property-special, rgb(92, 213, 251))",
         })}
         whiteSpace="nowrap"
+        aria-label="Property name"
       >
         <HighlightMatch highlight={filter}>
           {hypenateProperty(prop)}
@@ -162,6 +163,7 @@ export const Declaration = (props: DeclarationProps) => {
           height="9.6px"
           mx="4px"
           style={{ backgroundColor: computedValue }}
+          aria-label="Color preview"
         />
       )}
       <EditableValue
@@ -216,6 +218,7 @@ export const Declaration = (props: DeclarationProps) => {
                 overflow="hidden"
                 whiteSpace="nowrap"
                 maxWidth="130px"
+                aria-label="Computed value"
               >
                 {computedValue}
               </styled.span>

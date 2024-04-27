@@ -126,6 +126,7 @@ export const EditableValue = (props: EditableValueProps) => {
               backgroundColor: "#004a77ff",
             },
           })}
+          aria-label="Property value"
         />
         <EditablePreview />
       </Editable.Area>
