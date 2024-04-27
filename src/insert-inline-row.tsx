@@ -15,6 +15,7 @@ import { symbols } from "./lib/symbols";
 import { OverrideMap } from "./devtools-types";
 import { Declaration } from "./declaration";
 import { useDevtoolsContext } from "./devtools-context";
+import { dashCase } from "@pandacss/shared";
 
 interface InsertInlineRowProps {
   inspected: InspectResult;
@@ -75,9 +76,14 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
 
   const cancelEditing = (reason: string) => {
     // console.log("cancel-editing", reason);
-    dom.getEditableKey().innerText = "";
-    dom.getEditableValue().innerText = "";
-    delete dom.getInlineContainer().dataset.editing;
+    const editableKey = dom.getEditableKey();
+    const editableValue = dom.getEditableValue();
+    const inlineContainer = dom.getInlineContainer();
+
+    if (editableKey) editableKey.innerText = "";
+    if (editableValue) editableValue.innerText = "";
+    if (inlineContainer) delete inlineContainer.dataset.editing;
+
     setState("idle");
   };
 
@@ -87,7 +93,7 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
     // console.log("commit", editableValue.innerText);
 
     const declaration = {
-      prop: editableKey.innerText,
+      prop: dashCase(editableKey.innerText),
       value: editableValue.innerText,
     };
 

@@ -3,10 +3,6 @@
 - line-through on atomic class row declaration when there's an inline style
   declaration for the same prop (unless atomic has important, unless style has
   important)
-- automatically camelCase to dash-case when adding a new inline style
-  declaration
-- prevent adding inline style declaration with invalid property name (it
-  currently throws)
 
 - compactCss inline style
 - color picker on color previews ?
