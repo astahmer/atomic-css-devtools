@@ -33,16 +33,24 @@ export const useInspectedResult = (
   }, []);
 
   // Keep track of the location of the inspected element
-  const prevLocation = useRef(null as string | null);
+  const prevLocation = useRef(result?.env.location ?? null);
   useEffect(() => {
     if (!result?.env.location) return;
-    prevLocation.current = result?.env.location;
 
     const run = async () => {
+      prevLocation.current = result?.env.location;
       const update = await evaluator.inspect();
       setResult(update ?? null);
       cb?.(update ?? null);
     };
+
+    if (!prevLocation.current) {
+      prevLocation.current = result?.env.location;
+      return;
+    }
+
+    if (prevLocation.current === result?.env.location) return;
+
     run();
   }, [result?.env.location]);
 

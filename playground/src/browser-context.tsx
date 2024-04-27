@@ -38,9 +38,7 @@ const evaluator: Evaluator = {
     return inspectApi.inspectElement([inspectedElementSelector]);
   },
   onSelectionChanged: (cb) => {
-    console.log("onSelectionChanged");
     const handleSelectionChanged = async () => {
-      console.log("handleSelectionChanged");
       const result = await evaluator.inspect();
       cb(result ?? null);
     };
