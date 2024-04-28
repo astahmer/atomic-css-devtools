@@ -58,6 +58,7 @@ export const Toolbar = (props: ToolbarProps) => {
           h="19px"
           padding="4px 3px 3px"
           borderRadius="4px"
+          fontSize="12px"
           css={{
             color: "var(--sys-color-on-surface, #e3e3e3)",
             _placeholder: {
@@ -97,7 +98,7 @@ export const Toolbar = (props: ToolbarProps) => {
         )}
       </styled.div>
       {import.meta.env.DEV && (
-        <Tooltip content="Log inspected element">
+        <Tooltip content="Log inspected element" withArrow={false}>
           <ToolbarButton
             aria-label="Log inspected element"
             onClick={() =>
@@ -118,7 +119,7 @@ export const Toolbar = (props: ToolbarProps) => {
           </ToolbarButton>
         </Tooltip>
       )}
-      <Tooltip content="Refresh">
+      <Tooltip content="Refresh" withArrow={false}>
         <ToolbarButton onClick={() => refresh()} aria-label="Refresh">
           <RefreshCwIcon className={toolbarIcon} />
         </ToolbarButton>
@@ -145,7 +146,7 @@ export const Toolbar = (props: ToolbarProps) => {
           </ToolbarButton>
         </Collapsible.Trigger>
       </Tooltip>
-      <Tooltip content="Group elements by @layer">
+      <Tooltip content="Group elements by @layer" withArrow={false}>
         <Collapsible.Trigger asChild>
           <ToolbarButton
             aria-label="Group elements by @layer"
@@ -161,7 +162,7 @@ export const Toolbar = (props: ToolbarProps) => {
           </ToolbarButton>
         </Collapsible.Trigger>
       </Tooltip>
-      <Tooltip content="Group elements by @media">
+      <Tooltip content="Group elements by @media" withArrow={false}>
         <ToolbarButton
           aria-label="Group elements by @media"
           aria-selected={groupByMedia}
@@ -175,7 +176,7 @@ export const Toolbar = (props: ToolbarProps) => {
           <MonitorSmartphone className={toolbarIcon} />
         </ToolbarButton>
       </Tooltip>
-      <Tooltip content="Show selectors">
+      <Tooltip content="Show selectors" withArrow={false}>
         <Collapsible.Trigger asChild>
           <ToolbarButton
             aria-label="Show selectors"

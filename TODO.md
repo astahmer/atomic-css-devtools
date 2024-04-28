@@ -1,3 +1,6 @@
+- (ElementInspector) -> add atomic classes Declarations (like in the devtools
+  panel) https://www.tryhoverify.com/
+
 - when (next) inline style is disabled (line-through), remove disabled state
   from previous ones (which are now applied)
 - line-through on atomic class row declaration when there's an inline style
@@ -12,10 +15,6 @@
 - add title attribute when possible (and there is not tooltip already)
 - copy raw value on click sur computed value hint
 - light mode
-- blue highlight (in the browser host website) for every elements matching the
-  hovered selector
-- (firefox) button to highlight all elements matching a selector (like the
-  previous one but click to toggle it)
 - (firefox) red filter input on no results
 - (firefox) green highlight (like git diff) on overrides (added inline
   styles/updated values)

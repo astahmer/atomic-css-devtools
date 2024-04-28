@@ -3,7 +3,15 @@ import { useSelector } from "@xstate/store/react";
 import { useEffect, useRef } from "react";
 import { match } from "ts-pattern";
 import { css, cx } from "#styled-system/css";
-import { Center, Flex, HStack, Stack, Wrap, styled } from "#styled-system/jsx";
+import {
+  Box,
+  Center,
+  Flex,
+  HStack,
+  Stack,
+  Wrap,
+  styled,
+} from "#styled-system/jsx";
 import { cq } from "#styled-system/patterns";
 import { Declaration, checkboxStyles } from "./declaration";
 import { DeclarationGroup } from "./declaration-group";
@@ -79,7 +87,7 @@ export function SidebarPane() {
     computed.order.size > 0 || inspected.styleEntries.length > 0;
 
   return (
-    <>
+    <Box w="100%" h="100%" backgroundColor="background" color="content">
       <Collapsible.Root
         open={isExpanded}
         className={css({
@@ -308,6 +316,6 @@ export function SidebarPane() {
           )}
         </Flex>
       </Stack>
-    </>
+    </Box>
   );
 }

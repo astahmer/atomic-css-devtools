@@ -1,11 +1,8 @@
 import { defineConfig } from "@pandacss/dev";
-import { createPreset } from "@park-ui/panda-preset";
+import preset from "./panda.preset";
 
 export default defineConfig({
-  presets: [
-    "@pandacss/dev/presets",
-    createPreset({ grayColor: "sand", accentColor: "blue" }),
-  ],
+  presets: ["@pandacss/dev/presets", preset],
   // Whether to use css reset
   preflight: true,
 

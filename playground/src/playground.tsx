@@ -3,7 +3,6 @@ import { DevtoolsProvider } from "../../src/devtools-context";
 import { SidebarPane } from "../../src/sidebar-pane";
 import { css } from "../../styled-system/css";
 import { Box, Flex, HStack, Stack } from "../../styled-system/jsx";
-import { button } from "../../styled-system/recipes";
 import { browserContext } from "./browser-context";
 import { ElementInspector } from "./element-inspector";
 import { listeners } from "./inspected";
@@ -45,7 +44,13 @@ function Playground() {
         </HStack>
         <HStack>
           <button
-            className={button()}
+            className={css({
+              backgroundColor: "blue.400",
+              p: "4",
+              _hover: {
+                backgroundColor: "blue.500",
+              },
+            })}
             onClick={() => {
               setIsInspecting(true);
             }}

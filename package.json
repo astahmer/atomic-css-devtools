@@ -25,7 +25,6 @@
   "dependencies": {
     "@ark-ui/react": "^2.2.3",
     "@pandacss/shared": "^0.37.2",
-    "@park-ui/cli": "^0.6.0",
     "@webext-core/messaging": "^1.4.0",
     "@webext-core/proxy-service": "^1.2.0",
     "@xstate/store": "^0.0.3",
@@ -41,8 +40,7 @@
     "webext-bridge": "^6.0.1"
   },
   "devDependencies": {
-    "@pandacss/dev": "^0.37.1",
-    "@park-ui/panda-preset": "^0.36.1",
+    "@pandacss/dev": "^0.37.2",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
