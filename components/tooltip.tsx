@@ -12,7 +12,7 @@ const styles = sva({
   base: {
     positioner: {
       display: "flex",
-      "--arrow-background": "var(--sys-color-cdt-base-container, #212629)",
+      "--arrow-background": "colors.devtools.cdt-base-container",
       backgroundColor: "var(--arrow-background)",
       "--drop-shadow":
         "0 0 0 1px rgb(255 255 255/20%),0 2px 4px 2px rgb(0 0 0/20%),0 2px 6px 2px rgb(0 0 0/10%)",
@@ -21,7 +21,7 @@ const styles = sva({
       userSelect: "text",
       fontSize: "12px",
       lineHeight: "11px",
-      color: "content",
+      color: "devtools.on-surface",
     },
     content: {
       padding: "11px 7px",

@@ -32,9 +32,7 @@ export const HighlightMatch = ({
           <styled.mark
             color={variant === "blue" ? "currentColor" : undefined}
             backgroundColor={
-              variant === "blue"
-                ? "var(--sys-color-tonal-container, rgb(0, 74, 119))"
-                : undefined
+              variant === "blue" ? "devtools.tonal-container" : undefined
             }
             key={index}
             css={css}

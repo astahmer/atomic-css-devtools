@@ -30,7 +30,7 @@ export const onContentScriptMessage = new Proxy<DevtoolsExtensionApi>(
     get<T extends keyof ContentScriptEvents>(_target: any, propKey: T) {
       return function (cb: (message: any) => any) {
         return onMessage(propKey, (message) => {
-          console.log(`Received ${propKey} with message`, message.data);
+          // console.log(`Received ${propKey} with message`, message.data);
           return cb(message);
         });
       };

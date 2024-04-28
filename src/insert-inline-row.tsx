@@ -177,8 +177,7 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
       pt="1.5px"
       css={{
         "&:hover:not(:focus)": {
-          backgroundColor:
-            "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
+          backgroundColor: "devtools.state-hover-on-subtle",
         },
         display: "none",
         ".group[data-editing] &": { display: "inline-block" },
@@ -190,11 +189,10 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
         className={css(contentEditableStyles, {
           ".group[data-editing=key] &": {
             boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
-            backgroundColor:
-              "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+            backgroundColor: "devtools.cdt-base-container",
           },
           ".group[data-editing=value] &": {
-            color: "var(--sys-color-token-property-special, rgb(92, 213, 251))",
+            color: "devtools.token-property-special",
           },
         })}
         ref={(node) => {
@@ -251,8 +249,7 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
         className={css(contentEditableStyles, {
           ".group[data-editing=value] &": {
             boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
-            backgroundColor:
-              "var(--sys-color-cdt-base-container, rgb(40, 40, 40))",
+            backgroundColor: "devtools.cdt-base-container",
           },
         })}
         onKeyDown={(e) => {
@@ -323,17 +320,10 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
       }}
     >
       <Flex alignItems="center" tabIndex={0}>
-        <styled.span
-          fontWeight="500"
-          color="var(--sys-color-state-disabled, rgba(227, 227, 227, 0.38))"
-          mr="6px"
-        >
+        <styled.span fontWeight="500" color="devtools.state-disabled" mr="6px">
           element.style
         </styled.span>
-        <styled.span
-          fontWeight="600"
-          color="var(--sys-color-on-surface, rgb(227, 227, 227))"
-        >
+        <styled.span fontWeight="600" color="devtools.on-surface">
           {"{"}
         </styled.span>
       </Flex>
@@ -386,7 +376,7 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
       ) : null}
       <styled.span
         fontWeight="600"
-        color="var(--sys-color-on-surface, rgb(227, 227, 227))"
+        color="devtools.on-surface"
         onClick={(e) => {
           e.stopPropagation();
           startEditing(e, "last");
@@ -415,7 +405,7 @@ const contentEditableStyles = css.raw({
   margin: "0 -2px -1px",
   padding: "0 2px 1px",
   //
-  color: "var(--sys-color-on-surface, #e3e3e3)",
+  color: "devtools.on-surface",
   textDecoration: "inherit",
   whiteSpace: "pre",
   overflowWrap: "break-word",

@@ -7,6 +7,7 @@ import {
   MonitorSmartphone,
   RefreshCwIcon,
   ScanEyeIcon,
+  SunIcon,
 } from "lucide-react";
 import { css } from "#styled-system/css";
 import { Flex, styled } from "#styled-system/jsx";
@@ -53,20 +54,20 @@ export const Toolbar = (props: ToolbarProps) => {
           w="100%"
           overflow="hidden"
           whiteSpace="nowrap"
-          backgroundColor="var(--sys-color-state-hover-on-subtle, rgb(40, 40, 40))"
-          border="1px solid var(--sys-color-neutral-outline, rgb(117, 117, 117))"
+          backgroundColor="devtools.cdt-base-container"
+          border="1px solid {colors.devtools.neutral-outline}"
           h="19px"
           padding="4px 3px 3px"
           borderRadius="4px"
           fontSize="12px"
           css={{
-            color: "var(--sys-color-on-surface, #e3e3e3)",
+            color: "devtools.on-surface",
             _placeholder: {
-              color: "var(--sys-color-token-subtle, rgb(143, 143, 143))",
+              color: "devtools.token-subtle",
+              fontSize: "12.5px",
             },
             "&:hover:not(:focus)": {
-              backgroundColor:
-                "var(--sys-color-state-hover-on-subtle, rgba(253, 252, 251, 0.1))",
+              backgroundColor: "devtools.state-hover-on-subtle",
             },
             _focusVisible: {
               outline: "1px solid rgb(153, 200, 255)",
@@ -177,36 +178,29 @@ export const Toolbar = (props: ToolbarProps) => {
         </ToolbarButton>
       </Tooltip>
       <Tooltip content="Show selectors" withArrow={false}>
-        <Collapsible.Trigger asChild>
-          <ToolbarButton
-            aria-label="Show selectors"
-            aria-selected={showSelector}
-            className="group"
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            px="4px"
-            height="26px"
-            minWidth="28px"
-            _hover={{
-              backgroundColor:
-                "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
-            }}
-            _selected={{
-              backgroundColor:
-                "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-              color: "var(--icon-toggled, rgb(124, 172, 248))",
-            }}
-            onClick={() => {
-              store.send({
-                type: "setShowSelector",
-                showSelector: !showSelector,
-              });
-            }}
-          >
-            <BoxSelectIcon className={toolbarIcon} />
-          </ToolbarButton>
-        </Collapsible.Trigger>
+        <ToolbarButton
+          aria-label="Show selectors"
+          aria-selected={showSelector}
+          onClick={() => {
+            store.send({
+              type: "setShowSelector",
+              showSelector: !showSelector,
+            });
+          }}
+        >
+          <BoxSelectIcon className={toolbarIcon} />
+        </ToolbarButton>
+      </Tooltip>
+      <Tooltip content="Toggle color mode" withArrow={false}>
+        <ToolbarButton
+          aria-label="Toggle color mode"
+          aria-selected={showSelector}
+          onClick={() => {
+            document.body.classList.toggle("-theme-with-dark-background");
+          }}
+        >
+          <SunIcon className={toolbarIcon} />
+        </ToolbarButton>
       </Tooltip>
     </Flex>
   );
@@ -224,12 +218,14 @@ const ToolbarButton = styled(
       height: "26px",
       minWidth: "28px",
       _hover: {
-        backgroundColor:
-          "var(--sys-color-state-hover-on-subtle, rgb(253 252 251/10%))",
+        backgroundColor: "devtools.state-hover-on-subtle",
+        "&:not([aria-selected=true])": {
+          color: "devtools.on-surface",
+        },
       },
       _selected: {
-        backgroundColor: "var(--sys-color-neutral-container, rgb(60, 60, 60))",
-        color: "var(--icon-toggled, rgb(124, 172, 248))",
+        backgroundColor: "devtools.neutral-container",
+        color: "devtools.primary-bright",
       },
       _disabled: {
         opacity: "0.5",

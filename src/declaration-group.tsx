@@ -25,7 +25,7 @@ export const DeclarationGroup = (props: DeclarationGroupProps) => {
             fontSize="11px"
             opacity={{ base: 0.7, _hover: 1 }}
             _hover={{
-              backgroundColor: "rgba(253, 252, 251, 0.1)",
+              backgroundColor: "devtools.state-hover-on-subtle",
             }}
             ml="3px"
             mb="3px"

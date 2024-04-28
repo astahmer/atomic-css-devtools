@@ -87,12 +87,18 @@ export function SidebarPane() {
     computed.order.size > 0 || inspected.styleEntries.length > 0;
 
   return (
-    <Box w="100%" h="100%" backgroundColor="background" color="content">
+    <Box
+      w="100%"
+      h="100%"
+      backgroundColor="devtools.cdt-base-container"
+      color="devtools.on-surface"
+      overflow="auto"
+    >
       <Collapsible.Root
         open={isExpanded}
         className={css({
           position: "sticky",
-          backgroundColor: "#282828", // neutral-15
+          backgroundColor: "devtools.base-container",
           top: "0",
           transform: "translateY(-3px)",
           marginTop: "-3px",
@@ -144,145 +150,35 @@ export function SidebarPane() {
       </Collapsible.Root>
 
       <styled.hr opacity="0.2" />
-      <Stack
+      <Flex
+        direction="column"
+        textStyle="sm"
+        fontFamily="monospace"
+        fontSize="11px"
+        lineHeight="1.2"
         py="2px"
-        fontFamily="sans-serif"
         className={cq({ name: "rules", type: "inline-size" })}
       >
-        <Flex
-          direction="column"
-          textStyle="sm"
-          fontFamily="monospace"
-          fontSize="11px"
-          lineHeight="1.2"
-        >
-          <InsertInlineRow
-            inspected={inspected}
-            refresh={refresh}
-            overrides={overrides}
-            setOverrides={setOverrides}
-          />
-          {match(groupByLayer)
-            .with(false, () => {
-              if (groupByMedia) {
-                return (
-                  <Stack>
-                    {Array.from(computed.rulesInMedia.entries()).map(
-                      ([media, rules]) => {
-                        return (
-                          <DeclarationGroup
-                            key={media}
-                            label={
-                              <HighlightMatch highlight={filter}>{`${
-                                media === symbols.noMedia ? "" : "@media "
-                              }${media} (${rules.length})`}</HighlightMatch>
-                            }
-                            content={
-                              <DeclarationList
-                                rules={rules}
-                                inspected={inspected}
-                                overrides={overrides}
-                                setOverrides={setOverrides}
-                              />
-                            }
-                          />
-                        );
-                      }
-                    )}
-                  </Stack>
-                );
-              }
-
-              return (
-                <div className={cx("group", css({ px: "2px" }))}>
-                  {Array.from(computed.order).map((key, index) => (
-                    <Declaration
-                      {...{
-                        key,
-                        index,
-                        prop: key,
-                        matchValue: computed.styles[key],
-                        rule: computed.ruleByProp[key],
-                        inspected,
-                        override: overrides?.[key] ?? null,
-                        setOverride: (value, computed) =>
-                          setOverrides((overrides) => ({
-                            ...overrides,
-                            [symbols.overrideKey]: key,
-                            [key]: value != null ? { value, computed } : null,
-                          })),
-                      }}
-                    />
-                  ))}
-                </div>
-              );
-            })
-            .with(true, () => {
-              if (groupByMedia) {
-                return (
-                  <Stack>
-                    {Array.from(computed.rulesByLayerInMedia.entries())
-                      .filter(([layer]) => availableLayers.includes(layer))
-                      .map(([layer, mediaMap]) => {
-                        const mediaKeys = Object.keys(mediaMap);
-                        return (
-                          <DeclarationGroup
-                            key={layer}
-                            label={
-                              <HighlightMatch highlight={filter}>{`${
-                                layer === symbols.implicitOuterLayer
-                                  ? ""
-                                  : "@layer "
-                              }${layer} (${mediaKeys.length})`}</HighlightMatch>
-                            }
-                            content={
-                              <Stack ml="12px">
-                                {mediaKeys.map((media) => {
-                                  const mediaRules = mediaMap[media];
-                                  return (
-                                    <DeclarationGroup
-                                      key={media}
-                                      label={
-                                        <HighlightMatch highlight={filter}>
-                                          {`${
-                                            media === symbols.noMedia
-                                              ? ""
-                                              : "@media "
-                                          } ${media} (${mediaRules.length})`}
-                                        </HighlightMatch>
-                                      }
-                                      content={
-                                        <DeclarationList
-                                          rules={mediaRules}
-                                          inspected={inspected}
-                                          overrides={overrides}
-                                          setOverrides={setOverrides}
-                                        />
-                                      }
-                                    />
-                                  );
-                                })}
-                              </Stack>
-                            }
-                          />
-                        );
-                      })}
-                  </Stack>
-                );
-              }
-
+        <InsertInlineRow
+          inspected={inspected}
+          refresh={refresh}
+          overrides={overrides}
+          setOverrides={setOverrides}
+        />
+        {match(groupByLayer)
+          .with(false, () => {
+            if (groupByMedia) {
               return (
                 <Stack>
-                  {Array.from(computed.rulesByLayer.entries())
-                    .filter(([layer]) => selectedLayers.includes(layer))
-                    .map(([layer, rules]) => {
+                  {Array.from(computed.rulesInMedia.entries()).map(
+                    ([media, rules]) => {
                       return (
                         <DeclarationGroup
-                          key={layer}
+                          key={media}
                           label={
-                            <HighlightMatch
-                              highlight={filter}
-                            >{`${layer === symbols.implicitOuterLayer ? "" : "@layer "}${layer} (${rules.length})`}</HighlightMatch>
+                            <HighlightMatch highlight={filter}>{`${
+                              media === symbols.noMedia ? "" : "@media "
+                            }${media} (${rules.length})`}</HighlightMatch>
                           }
                           content={
                             <DeclarationList
@@ -294,28 +190,134 @@ export function SidebarPane() {
                           }
                         />
                       );
+                    }
+                  )}
+                </Stack>
+              );
+            }
+
+            return (
+              <div className={cx("group", css({ px: "2px" }))}>
+                {Array.from(computed.order).map((key, index) => (
+                  <Declaration
+                    {...{
+                      key,
+                      index,
+                      prop: key,
+                      matchValue: computed.styles[key],
+                      rule: computed.ruleByProp[key],
+                      inspected,
+                      override: overrides?.[key] ?? null,
+                      setOverride: (value, computed) =>
+                        setOverrides((overrides) => ({
+                          ...overrides,
+                          [symbols.overrideKey]: key,
+                          [key]: value != null ? { value, computed } : null,
+                        })),
+                    }}
+                  />
+                ))}
+              </div>
+            );
+          })
+          .with(true, () => {
+            if (groupByMedia) {
+              return (
+                <Stack>
+                  {Array.from(computed.rulesByLayerInMedia.entries())
+                    .filter(([layer]) => availableLayers.includes(layer))
+                    .map(([layer, mediaMap]) => {
+                      const mediaKeys = Object.keys(mediaMap);
+                      return (
+                        <DeclarationGroup
+                          key={layer}
+                          label={
+                            <HighlightMatch highlight={filter}>{`${
+                              layer === symbols.implicitOuterLayer
+                                ? ""
+                                : "@layer "
+                            }${layer} (${mediaKeys.length})`}</HighlightMatch>
+                          }
+                          content={
+                            <Stack ml="12px">
+                              {mediaKeys.map((media) => {
+                                const mediaRules = mediaMap[media];
+                                return (
+                                  <DeclarationGroup
+                                    key={media}
+                                    label={
+                                      <HighlightMatch highlight={filter}>
+                                        {`${
+                                          media === symbols.noMedia
+                                            ? ""
+                                            : "@media "
+                                        } ${media} (${mediaRules.length})`}
+                                      </HighlightMatch>
+                                    }
+                                    content={
+                                      <DeclarationList
+                                        rules={mediaRules}
+                                        inspected={inspected}
+                                        overrides={overrides}
+                                        setOverrides={setOverrides}
+                                      />
+                                    }
+                                  />
+                                );
+                              })}
+                            </Stack>
+                          }
+                        />
+                      );
                     })}
                 </Stack>
               );
-            })
-            .exhaustive()}
-          {!hasMatches && (
-            <Center
-              fontStyle="italic"
-              fontSize="12px"
-              lineHeight="auto"
-              fontFamily="system-ui, sans-serif"
-              p="4px"
-              textAlign="center"
-              whiteSpace="nowrap"
-              borderBottom="1px solid #474747ff"
-              color="var(--sys-color-token-subtle, rgb(143, 143, 143))"
-            >
-              <span>No matching selector or style</span>
-            </Center>
-          )}
-        </Flex>
-      </Stack>
+            }
+
+            return (
+              <Stack>
+                {Array.from(computed.rulesByLayer.entries())
+                  .filter(([layer]) => selectedLayers.includes(layer))
+                  .map(([layer, rules]) => {
+                    return (
+                      <DeclarationGroup
+                        key={layer}
+                        label={
+                          <HighlightMatch
+                            highlight={filter}
+                          >{`${layer === symbols.implicitOuterLayer ? "" : "@layer "}${layer} (${rules.length})`}</HighlightMatch>
+                        }
+                        content={
+                          <DeclarationList
+                            rules={rules}
+                            inspected={inspected}
+                            overrides={overrides}
+                            setOverrides={setOverrides}
+                          />
+                        }
+                      />
+                    );
+                  })}
+              </Stack>
+            );
+          })
+          .exhaustive()}
+        {!hasMatches && (
+          <Center
+            fontStyle="italic"
+            fontSize="12px"
+            lineHeight="auto"
+            fontFamily="system-ui, sans-serif"
+            p="4px"
+            textAlign="center"
+            whiteSpace="nowrap"
+            borderBottom="1px solid #474747ff"
+            color="devtools.token-subtle"
+          >
+            <span>No matching selector or style</span>
+          </Center>
+        )}
+      </Flex>
     </Box>
   );
 }

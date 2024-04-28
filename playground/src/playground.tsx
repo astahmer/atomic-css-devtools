@@ -60,7 +60,8 @@ function Playground() {
         </HStack>
       </Stack>
 
-      <Box border="1px solid" w="100%" h="100%">
+      {/* <Box w="100%" h="200px" className="-theme-with-dark-background"> */}
+      <Box w="100%">
         <DevtoolsProvider value={browserContext}>
           <SidebarPane />
         </DevtoolsProvider>

@@ -34,8 +34,8 @@ export const checkboxStyles = css.raw({
   width: "13px",
   height: "13px",
   px: "4px",
-  accentColor: "rgb(124, 172, 248)", // var(--sys-color-primary-bright)
-  color: "rgb(6, 46, 111)", // var(--sys-color-on-primary)
+  accentColor: "devtools.primary-bright",
+  color: "devtools.on-primary",
 });
 
 export const Declaration = (props: DeclarationProps) => {
@@ -84,8 +84,7 @@ export const Declaration = (props: DeclarationProps) => {
       display="flex"
       alignItems="flex-start"
       mr="2"
-      // var(--sys-color-state-hover-on-subtle)
-      _hover={{ backgroundColor: "rgba(253, 252, 251, 0.1)" }}
+      _hover={{ backgroundColor: "devtools.state-hover-on-subtle" }}
       textDecoration={
         !enabled || hasLineThrough ? "line-through !important" : "none"
       }
@@ -148,7 +147,7 @@ export const Declaration = (props: DeclarationProps) => {
         htmlFor={id}
         pl="4px"
         className={css({
-          color: "var(--sys-color-token-property-special, rgb(92, 213, 251))",
+          color: "devtools.token-property-special",
         })}
         whiteSpace="nowrap"
         aria-label="Property name"
@@ -187,7 +186,9 @@ export const Declaration = (props: DeclarationProps) => {
           <styled.div
             alignSelf="center"
             display="inline-block"
-            border="1px solid var(--sys-color-neutral-outline, #757575)"
+            borderWidth="1px"
+            borderStyle="solid"
+            borderColor="devtools.neutral-outline"
             width="9.6px"
             height="9.6px"
             mx="4px"

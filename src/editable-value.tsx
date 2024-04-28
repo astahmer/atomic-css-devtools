@@ -118,15 +118,11 @@ export const EditableValue = (props: EditableValueProps) => {
       className={css({ display: "flex", alignItems: "center" })}
       activationMode="focus"
       placeholder={propValue}
-      // var(--webkit-css-property-color,var(--sys-color-token-property-special))
       onValueCommit={(update) => {
         overrideValue(update.value);
       }}
     >
-      <Editable.Area
-        ref={ref}
-        // className={css({ display: "flex!", alignItems: "center" })}
-      >
+      <Editable.Area ref={ref}>
         <Editable.Input
           defaultValue={propValue}
           onBlur={() => setKey((key) => key + 1)}
@@ -134,15 +130,13 @@ export const EditableValue = (props: EditableValueProps) => {
             // boxShadow: "var(--drop-shadow)",
             boxShadow:
               "0 0 0 1px rgb(255 255 255/20%),0 2px 4px 2px rgb(0 0 0/20%),0 2px 6px 2px rgb(0 0 0/10%)!",
-            backgroundColor: "#282828ff!",
+            backgroundColor: "devtools.neutral15",
             textOverflow: "clip!",
             margin: "0 -2px -1px!",
             padding: "0 2px 1px!",
             opacity: "100%!",
             _selection: {
-              // --sys-color-tonal-container
-              // #004a77ff
-              backgroundColor: "#004a77ff",
+              backgroundColor: "devtools.tonal-container",
             },
           })}
           aria-label="Property value"

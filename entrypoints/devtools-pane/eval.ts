@@ -176,6 +176,10 @@ export const evaluator: Evaluator = {
       handleSelectionChanged
     );
 
+    if (browser.devtools.panels.themeName === "dark") {
+      document.body.classList.add("-theme-with-dark-background");
+    }
+
     handleSelectionChanged();
 
     return () => {
