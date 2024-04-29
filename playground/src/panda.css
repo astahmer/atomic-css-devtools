@@ -37,5 +37,5 @@ body {
 }
 
 ::selection {
-  background-color: var(--sys-color-tonal-container, rgb(0, 74, 119));
+  background-color: var(--colors-devtools-tonal-container, rgb(0, 74, 119));
 }
