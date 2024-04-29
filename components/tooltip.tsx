@@ -16,7 +16,9 @@ const styles = sva({
       backgroundColor: "var(--arrow-background)",
       "--drop-shadow":
         "0 0 0 1px rgb(255 255 255/20%),0 2px 4px 2px rgb(0 0 0/20%),0 2px 6px 2px rgb(0 0 0/10%)",
-      boxShadow: "var(--drop-shadow)",
+      "&:has([data-state=open])": {
+        boxShadow: "var(--drop-shadow)",
+      },
       borderRadius: "2px",
       userSelect: "text",
       fontSize: "12px",
