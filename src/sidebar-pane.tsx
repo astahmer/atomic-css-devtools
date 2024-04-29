@@ -241,7 +241,7 @@ export function SidebarPane() {
                           content={
                             <Stack ml="12px">
                               {mediaKeys.map((media) => {
-                                const mediaRules = mediaMap[media];
+                                const mediaRules = mediaMap.get(media)!;
                                 return (
                                   <DeclarationGroup
                                     key={media}

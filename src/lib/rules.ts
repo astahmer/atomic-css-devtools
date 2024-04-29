@@ -12,6 +12,7 @@ import { compactCSS } from "./compact-css";
 import { pick } from "./pick";
 import { symbols } from "./symbols";
 import { unescapeString } from "./unescape-string";
+import { sortAtRules } from "./sort-at-rules";
 
 /**
  * Goes through each parent rule until finding one that matches the predicate
@@ -105,6 +106,14 @@ export const computeStyles = (
   const appliedRuleOrProp = {} as Record<string, StyleRuleWithProp>;
   const appliedStyles = {} as Record<string, string>;
   const insertOrder = [] as string[];
+  const mediaList = new Set<string>(
+    rules
+      .filter((r) => r.type === "style" && r.media)
+      .map((r) => r.type === "style" && r.media) as string[]
+  );
+  const mediaOrder = Array.from(mediaList)
+    .sort((a, b) => sortAtRules(a, b))
+    .concat(symbols.noMedia);
 
   const visibleRuleByProp = {} as Record<string, StyleRuleWithProp>;
   const visibleStyles = {} as Record<string, string>;
@@ -117,6 +126,7 @@ export const computeStyles = (
 
     Object.keys(rule.style).forEach((key) => {
       insertOrder.push(key);
+
       appliedStyles[key] = rule.style[key];
       // console.log({ rule: rule.selector, key, value: rule.style[key] });
       appliedRuleOrProp[key] = {
@@ -148,10 +158,9 @@ export const computeStyles = (
   keys.omit.forEach((key) => order.delete(key));
 
   const updated = pick(visibleStyles, keys.pick);
-  // console.log({ insertOrder, order, keys, styles, updated });
 
   const rulesInMedia = new Map<string, Array<StyleRuleWithProp>>(
-    sortImplicitFirst ? [[symbols.noMedia, []]] : undefined
+    mediaOrder.map((media) => [media, []])
   );
   order.forEach((prop) => {
     const rule = visibleRuleByProp[prop];
@@ -174,10 +183,15 @@ export const computeStyles = (
 
   const rulesByLayerInMedia = new Map<
     string,
-    Record<string, Array<StyleRuleWithProp>>
+    Map<string, Array<StyleRuleWithProp>>
   >(
     sortImplicitFirst
-      ? [[symbols.implicitOuterLayer, { [symbols.noMedia]: [] }]]
+      ? [
+          [
+            symbols.implicitOuterLayer,
+            new Map(mediaOrder.map((media) => [media, []])),
+          ],
+        ]
       : undefined
   );
   order.forEach((prop) => {
@@ -187,11 +201,14 @@ export const computeStyles = (
     const layer = rule.layer || symbols.implicitOuterLayer;
     const media = rule.media || symbols.noMedia;
 
-    const currentLayer = rulesByLayerInMedia.get(layer) || {};
-    const currentMedia = currentLayer[media] || [];
+    const currentLayer =
+      rulesByLayerInMedia.get(layer) ||
+      new Map(mediaOrder.map((media) => [media, []]));
+    const currentMedia = currentLayer.get(media) || [];
 
     currentMedia.push(rule);
-    rulesByLayerInMedia.set(layer, { ...currentLayer, [media]: currentMedia });
+    currentLayer.set(media, currentMedia);
+    rulesByLayerInMedia.set(layer, currentLayer);
   });
 
   // console.log({
