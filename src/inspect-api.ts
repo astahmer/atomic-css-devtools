@@ -99,8 +99,8 @@ export class InspectAPI {
    * Inspects an element and returns all matching CSS rules
    * This needs to contain every functions as it will be stringified/evaluated in the browser
    */
-  inspectElement(elementSelectors: string[]) {
-    const element = this.traverseSelectors(elementSelectors);
+  inspectElement(elementSelectors: string[], el?: HTMLElement) {
+    const element = el ?? this.traverseSelectors(elementSelectors);
     // console.log({ elementSelectors, element });
     if (!element) return;
 

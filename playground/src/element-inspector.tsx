@@ -1,15 +1,20 @@
 import { Portal } from "@ark-ui/react";
 import { getPlacement, getPlacementStyles } from "@zag-js/popper";
 import React, { useEffect, useRef, useState } from "react";
-import { css } from "../../styled-system/css";
+import { Declaration } from "../../src/declaration";
+import { InspectResult, inspectApi } from "../../src/inspect-api";
+import { getHighlightsStyles } from "../../src/lib/get-highlights-styles";
+import { computeStyles } from "../../src/lib/rules";
+import { css, cx } from "../../styled-system/css";
 import { ElementDetails, ElementDetailsData } from "./element-details";
 import { getInspectedElement } from "./inspected";
-import { getHighlightsStyles } from "../../src/lib/get-highlights-styles";
 
 export const ElementInspector = ({
   onInspect,
+  view = "normal",
 }: {
   onInspect: (element: HTMLElement) => void;
+  view?: "normal" | "atomic";
 }) => {
   const floatingRef = useRef<HTMLDivElement | null>(null);
 
@@ -50,6 +55,9 @@ export const ElementInspector = ({
     setHighlightStyles(getHighlightsStyles(element) as React.CSSProperties[]);
 
     clean();
+
+    const inspectResult = inspectApi.inspectElement([], element);
+    setInspected(inspectResult ?? null);
   };
 
   // Inspect clicked element
@@ -103,6 +111,9 @@ export const ElementInspector = ({
     };
   }, []);
 
+  const [inspected, setInspected] = useState<InspectResult | null>(null);
+  const computed = inspected && computeStyles(inspected.rules);
+
   return (
     <Portal>
       <div
@@ -117,19 +128,57 @@ export const ElementInspector = ({
         <div
           ref={floatingRef}
           id="atomic-devtools-inspect-tooltip"
-          className={tooltipStyles}
+          className={css(
+            tooltipStyles,
+            view === "normal" && {
+              maxWidth: "300px",
+            },
+            view === "atomic" && {
+              color: "devtools.on-surface",
+              backgroundColor: "devtools.cdt-base-container",
+            }
+          )}
           style={tooltipInfo?.styles}
         >
-          {tooltipInfo && <ElementDetails details={tooltipInfo.details} />}
+          {view === "normal" && tooltipInfo && (
+            <ElementDetails details={tooltipInfo.details} />
+          )}
+          {view === "atomic" && inspected && computed && (
+            <div
+              className={cx(
+                "group",
+                css({
+                  px: "2px",
+                  fontSize: "11px",
+                  lineHeight: "1.2",
+                  fontFamily: "monospace",
+                })
+              )}
+            >
+              {Array.from(computed.order).map((key, index) => (
+                <Declaration
+                  {...{
+                    key,
+                    index,
+                    prop: key,
+                    matchValue: computed.styles[key],
+                    rule: computed.ruleByProp[key],
+                    inspected,
+                    override: null,
+                    setOverride: () => {},
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </Portal>
   );
 };
 
-const tooltipStyles = css({
+const tooltipStyles = css.raw({
   position: "absolute",
-  maxWidth: "300px",
   maxHeight: "300px",
   overflow: "hidden",
   fontSize: "12px",
