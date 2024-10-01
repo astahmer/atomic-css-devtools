@@ -1,3 +1,8 @@
+note for anyone curious: I had those notes when the project was still private 😅
+hence the little mess
+
+---
+
 - (ElementInspector) -> add atomic classes Declarations (like in the devtools
   panel) https://www.tryhoverify.com/
 
