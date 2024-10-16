@@ -3,21 +3,41 @@
 // - `{rule} instanceof CSS{rule}` might not be the same in different JS contexts (e.g. iframe)
 
 const isCSSStyleRule = (rule: CSSRule): rule is CSSStyleRule => {
-  return rule.constructor.name === "CSSStyleRule";
+  return (
+    rule.constructor.name === "CSSStyleRule" ||
+    rule.type === rule.STYLE_RULE ||
+    rule instanceof CSSStyleRule
+  );
 };
 
 const isCSSMediaRule = (rule: CSSRule): rule is CSSMediaRule => {
-  return rule.constructor.name === "CSSMediaRule";
+  return (
+    rule.constructor.name === "CSSMediaRule" ||
+    rule.type === rule.MEDIA_RULE ||
+    rule instanceof CSSMediaRule
+  );
 };
 
 const isCSSLayerBlockRule = (rule: CSSRule): rule is CSSLayerBlockRule => {
-  return rule.constructor.name === "CSSLayerBlockRule";
+  return (
+    rule.constructor.name === "CSSLayerBlockRule" ||
+    (rule.type === 0 &&
+      rule.cssText.startsWith("@layer ") &&
+      rule.cssText.includes("{")) ||
+    rule instanceof CSSLayerBlockRule
+  );
 };
 
 const isCSSLayerStatementRule = (
   rule: CSSRule,
 ): rule is CSSLayerStatementRule => {
-  return rule.constructor.name === "CSSLayerStatementRule";
+  return (
+    rule.constructor.name === "CSSLayerStatementRule" ||
+    (rule.type === 0 &&
+      rule.cssText.startsWith("@layer ") &&
+      !rule.cssText.includes("{")) ||
+    rule instanceof CSSLayerStatementRule
+  );
 };
 
 const isElement = (obj: any): obj is Element => {

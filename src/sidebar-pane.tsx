@@ -139,7 +139,10 @@ export function SidebarPane() {
                       })
                     }
                   />
-                  <label htmlFor={"layer-" + layer}>
+                  <label
+                    htmlFor={"layer-" + layer}
+                    className={css({ fontSize: "12px" })}
+                  >
                     {layer}
                     {""}({computed.rulesByLayer.get(layer)?.length})
                   </label>
@@ -160,12 +163,15 @@ export function SidebarPane() {
         fontSize="11px"
         lineHeight="1.2"
       >
-        <InsertInlineRow
-          inspected={inspected}
-          refresh={refresh}
-          overrides={overrides}
-          setOverrides={setOverrides}
-        />
+        {/* TODO FIXME */}
+        {import.meta.env.FIREFOX ? null : (
+          <InsertInlineRow
+            inspected={inspected}
+            refresh={refresh}
+            overrides={overrides}
+            setOverrides={setOverrides}
+          />
+        )}
         {match(groupByLayer)
           .with(false, () => {
             if (groupByMedia) {

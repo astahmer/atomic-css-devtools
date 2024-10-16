@@ -19,9 +19,11 @@ const usePlatformClass = () => {
     hasOnThemeChanged &&
       browser.devtools.panels.onThemeChanged.addListener(listener);
 
-    browser.runtime.getPlatformInfo().then((info) => {
-      document.body.classList.add("platform-" + info.os);
-    });
+    if (browser.runtime.getPlatformInfo) {
+      browser.runtime.getPlatformInfo().then((info) => {
+        document.body.classList.add("platform-" + info.os);
+      });
+    }
 
     return () => {
       hasOnThemeChanged &&
