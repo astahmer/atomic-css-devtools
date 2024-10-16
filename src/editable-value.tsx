@@ -188,6 +188,7 @@ export const EditableValue = (props: EditableValueProps) => {
           />
         </Tooltip>
       )}
+      <span>;</span>
     </Editable.Root>
   );
 };
@@ -201,7 +202,6 @@ const EditablePreview = () => {
       <HighlightMatch highlight={filter}>
         {ctx.previewProps.children}
       </HighlightMatch>
-      {ctx.isEditing ? null : <span>;</span>}
     </span>
   );
 };
