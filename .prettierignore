@@ -1,0 +1,5 @@
+node_modules
+.output
+.wxt
+styled-system
+pnpm-lock.yaml
