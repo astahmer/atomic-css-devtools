@@ -12,7 +12,7 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare",
+    "postinstall": "wxt prepare && panda",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "play": "vite",
