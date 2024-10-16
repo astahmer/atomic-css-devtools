@@ -7,7 +7,6 @@ import { DevtoolsProvider } from "../../src/devtools-context.ts";
 import { extensionContext } from "./context.ts";
 
 browser.runtime.onMessage.addListener(
-  // @ts-expect-error
   function (_request, _sender, _sendResponse) {
     // Dummy listener to prevent error:
     // Could not establish connection. Receiving end does not exist.
