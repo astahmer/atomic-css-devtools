@@ -15,7 +15,7 @@ const isCSSLayerBlockRule = (rule: CSSRule): rule is CSSLayerBlockRule => {
 };
 
 const isCSSLayerStatementRule = (
-  rule: CSSRule
+  rule: CSSRule,
 ): rule is CSSLayerStatementRule => {
   return rule.constructor.name === "CSSLayerStatementRule";
 };

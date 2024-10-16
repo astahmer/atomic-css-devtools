@@ -188,8 +188,8 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
         contentEditable="plaintext-only"
         className={css(contentEditableStyles, {
           ".group[data-editing=key] &": {
-            boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
             backgroundColor: "devtools.cdt-base-container",
+            boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
           },
           ".group[data-editing=value] &": {
             color: "devtools.token-property-special",
@@ -248,8 +248,8 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
         contentEditable="plaintext-only"
         className={css(contentEditableStyles, {
           ".group[data-editing=value] &": {
-            boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
             backgroundColor: "devtools.cdt-base-container",
+            boxShadow: "rgba(255, 255, 255, 0.2) 0px 0px 0px 1px",
           },
         })}
         onKeyDown={(e) => {
@@ -303,27 +303,27 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
     inspected.styleEntries.map(([prop, value]) => [
       camelCaseProperty(prop),
       value,
-    ])
+    ]),
   );
   const keys = compactCSS(styles);
   const applied = pick(styles, keys.pick);
 
   return (
     <Flex
-      direction="column"
-      gap="2px"
-      px="4px"
-      id="inline-styles"
       className="group"
+      id="inline-styles"
       onClick={(e) => {
         startEditing(e, "first");
       }}
+      gap="2px"
+      direction="column"
+      px="4px"
     >
-      <Flex alignItems="center" tabIndex={0}>
-        <styled.span fontWeight="500" color="devtools.state-disabled" mr="6px">
+      <Flex tabIndex={0} alignItems="center">
+        <styled.span mr="6px" color="devtools.state-disabled" fontWeight="500">
           element.style
         </styled.span>
-        <styled.span fontWeight="600" color="devtools.on-surface">
+        <styled.span color="devtools.on-surface" fontWeight="600">
           {"{"}
         </styled.span>
       </Flex>
@@ -370,17 +370,17 @@ export const InsertInlineRow = (props: InsertInlineRowProps) => {
                   {index === clickedRowIndex ? EditableRow : null}
                 </Fragment>
               );
-            }
+            },
           )}
         </styled.div>
       ) : null}
       <styled.span
-        fontWeight="600"
-        color="devtools.on-surface"
         onClick={(e) => {
           e.stopPropagation();
           startEditing(e, "last");
         }}
+        color="devtools.on-surface"
+        fontWeight="600"
       >
         {"}"}
       </styled.span>
@@ -400,13 +400,13 @@ const dom = {
 };
 
 const contentEditableStyles = css.raw({
-  textOverflow: "clip!important",
-  opacity: "100%!important",
   margin: "0 -2px -1px",
   padding: "0 2px 1px",
   //
   color: "devtools.on-surface",
   textDecoration: "inherit",
+  textOverflow: "clip!important",
+  opacity: "100%!important",
   whiteSpace: "pre",
   overflowWrap: "break-word",
 

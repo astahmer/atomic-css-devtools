@@ -36,7 +36,7 @@ export default defineContentScript({
     onDevtoolsMessage.computePropertyValue((message) => {
       return inspectApi.computePropertyValue(
         message.data.selectors,
-        message.data.prop
+        message.data.prop,
       );
     });
     onDevtoolsMessage.updateStyleRule((message) => {

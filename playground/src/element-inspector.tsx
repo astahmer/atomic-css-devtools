@@ -19,10 +19,10 @@ export const ElementInspector = ({
   const floatingRef = useRef<HTMLDivElement | null>(null);
 
   const [tooltipInfo, setTooltipInfo] = useState(
-    null as { styles: React.CSSProperties; details: ElementDetailsData } | null
+    null as { styles: React.CSSProperties; details: ElementDetailsData } | null,
   );
   const [highlightStyles, setHighlightStyles] = useState<React.CSSProperties[]>(
-    []
+    [],
   );
 
   const update = (element: HTMLElement) => {
@@ -102,7 +102,7 @@ export const ElementInspector = ({
         const element = e.target as HTMLElement;
         update(element as HTMLElement);
       },
-      { once: true }
+      { once: true },
     );
 
     document.addEventListener("mouseover", handleMouseOver);
@@ -136,7 +136,7 @@ export const ElementInspector = ({
             view === "atomic" && {
               color: "devtools.on-surface",
               backgroundColor: "devtools.cdt-base-container",
-            }
+            },
           )}
           style={tooltipInfo?.styles}
         >
@@ -149,10 +149,10 @@ export const ElementInspector = ({
                 "group",
                 css({
                   px: "2px",
+                  fontFamily: "monospace",
                   fontSize: "11px",
                   lineHeight: "1.2",
-                  fontFamily: "monospace",
-                })
+                }),
               )}
             >
               {Array.from(computed.order).map((key, index) => (
@@ -178,18 +178,18 @@ export const ElementInspector = ({
 };
 
 const tooltipStyles = css.raw({
+  display: "flex",
+  zIndex: "9999!",
   position: "absolute",
-  maxHeight: "300px",
-  overflow: "hidden",
-  fontSize: "12px",
-  color: "#333",
-  backgroundColor: "#f9f9f9",
+  gap: "2px",
+  flexDirection: "column",
   border: "1px solid #aaa",
   borderRadius: "8px",
+  maxHeight: "300px",
   padding: "10px",
+  color: "#333",
+  fontSize: "12px",
+  backgroundColor: "#f9f9f9",
   boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-  zIndex: "9999!",
-  display: "flex",
-  flexDirection: "column",
-  gap: "2px",
+  overflow: "hidden",
 });

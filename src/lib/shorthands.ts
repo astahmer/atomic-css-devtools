@@ -210,7 +210,7 @@ export const shorthandProperties = {
 
 export const longhands = Object.values(shorthandProperties).reduce(
   (a, b) => [...a, ...b],
-  []
+  [],
 );
 
 export const shorthandForLonghand = {} as Record<string, string>;

@@ -45,21 +45,25 @@ export const Toolbar = (props: ToolbarProps) => {
   }
 
   return (
-    <Flex alignItems="center" position="relative" zIndex="2" px="5px">
+    <Flex zIndex="2" position="relative" alignItems="center" px="5px">
       <styled.div position="relative" flex="1">
         <styled.input
           aria-label="Filter"
           placeholder="Filter"
-          mt="1px"
+          value={filter}
+          onChange={(e) =>
+            store.send({ type: "setFilter", filter: e.target.value })
+          }
+          border="1px solid {colors.devtools.neutral-outline}"
+          borderRadius="4px"
           w="100%"
+          h="19px"
+          mt="1px"
+          padding="4px 3px 3px"
+          fontSize="12px"
+          backgroundColor="devtools.cdt-base-container"
           overflow="hidden"
           whiteSpace="nowrap"
-          backgroundColor="devtools.cdt-base-container"
-          border="1px solid {colors.devtools.neutral-outline}"
-          h="19px"
-          padding="4px 3px 3px"
-          borderRadius="4px"
-          fontSize="12px"
           css={{
             color: "devtools.on-surface",
             _placeholder: {
@@ -75,19 +79,15 @@ export const Toolbar = (props: ToolbarProps) => {
               outlineColor: "rgb(153, 200, 255)",
             },
           }}
-          value={filter}
-          onChange={(e) =>
-            store.send({ type: "setFilter", filter: e.target.value })
-          }
         />
         {filter && (
           <span
             className={css({
+              position: "absolute",
+              top: "2px",
+              right: "0",
               w: "16px",
               h: "16px",
-              position: "absolute",
-              right: "0",
-              top: "2px",
               opacity: { base: "0.7", _hover: "1" },
               backgroundColor: "var(--icon-default, rgb(199, 199, 199))",
             })}
@@ -99,7 +99,7 @@ export const Toolbar = (props: ToolbarProps) => {
         )}
       </styled.div>
       {import.meta.env.DEV && (
-        <Tooltip content="Log inspected element" withArrow={false}>
+        <Tooltip withArrow={false} content="Log inspected element">
           <ToolbarButton
             aria-label="Log inspected element"
             onClick={() =>
@@ -111,7 +111,7 @@ export const Toolbar = (props: ToolbarProps) => {
                   availableLayers,
                   selectedLayers,
                 },
-                computed
+                computed,
                 // api.state
               )
             }
@@ -120,7 +120,7 @@ export const Toolbar = (props: ToolbarProps) => {
           </ToolbarButton>
         </Tooltip>
       )}
-      <Tooltip content="Refresh" withArrow={false}>
+      <Tooltip withArrow={false} content="Refresh">
         <ToolbarButton onClick={() => refresh()} aria-label="Refresh">
           <RefreshCwIcon className={toolbarIcon} />
         </ToolbarButton>
@@ -147,7 +147,7 @@ export const Toolbar = (props: ToolbarProps) => {
           </ToolbarButton>
         </Collapsible.Trigger>
       </Tooltip>
-      <Tooltip content="Group elements by @layer" withArrow={false}>
+      <Tooltip withArrow={false} content="Group elements by @layer">
         <Collapsible.Trigger asChild>
           <ToolbarButton
             aria-label="Group elements by @layer"
@@ -163,7 +163,7 @@ export const Toolbar = (props: ToolbarProps) => {
           </ToolbarButton>
         </Collapsible.Trigger>
       </Tooltip>
-      <Tooltip content="Group elements by @media" withArrow={false}>
+      <Tooltip withArrow={false} content="Group elements by @media">
         <ToolbarButton
           aria-label="Group elements by @media"
           aria-selected={groupByMedia}
@@ -177,7 +177,7 @@ export const Toolbar = (props: ToolbarProps) => {
           <MonitorSmartphone className={toolbarIcon} />
         </ToolbarButton>
       </Tooltip>
-      <Tooltip content="Show selectors" withArrow={false}>
+      <Tooltip withArrow={false} content="Show selectors">
         <ToolbarButton
           aria-label="Show selectors"
           aria-selected={showSelector}
@@ -191,7 +191,7 @@ export const Toolbar = (props: ToolbarProps) => {
           <BoxSelectIcon className={toolbarIcon} />
         </ToolbarButton>
       </Tooltip>
-      <Tooltip content="Toggle color mode" withArrow={false}>
+      <Tooltip withArrow={false} content="Toggle color mode">
         <ToolbarButton
           aria-label="Toggle color mode"
           aria-selected={showSelector}
@@ -210,30 +210,30 @@ const ToolbarButton = styled(
   "button",
   {
     base: {
-      ml: "auto",
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
-      px: "4px",
-      height: "26px",
       minWidth: "28px",
+      height: "26px",
+      ml: "auto",
+      px: "4px",
+      _disabled: {
+        opacity: "0.5",
+        cursor: "not-allowed",
+      },
+      _selected: {
+        color: "devtools.primary-bright",
+        backgroundColor: "devtools.neutral-container",
+      },
       _hover: {
         backgroundColor: "devtools.state-hover-on-subtle",
         "&:not([aria-selected=true])": {
           color: "devtools.on-surface",
         },
       },
-      _selected: {
-        backgroundColor: "devtools.neutral-container",
-        color: "devtools.primary-bright",
-      },
-      _disabled: {
-        opacity: "0.5",
-        cursor: "not-allowed",
-      },
     },
   },
-  { defaultProps: { className: "group" } }
+  { defaultProps: { className: "group" } },
 );
 
 const toolbarIcon = css({

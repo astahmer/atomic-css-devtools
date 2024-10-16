@@ -65,12 +65,12 @@ export const store = createStore(
       // (layersOrder is gathered from all stylesheets, whereas `availableLayers` is the layers that are actually applied to the element)
       const availableLayersDiff = diffLayers(
         ctx.inspected?.layersOrder ?? [],
-        event.inspected.layersOrder
+        event.inspected.layersOrder,
       );
 
       const elementLayersDiff = diffLayers(
         ctx.availableLayers,
-        Array.from(computed.rulesByLayer.keys())
+        Array.from(computed.rulesByLayer.keys()),
       );
 
       const isSame = availableLayersDiff.isSame && elementLayersDiff.isSame;
@@ -100,7 +100,7 @@ export const store = createStore(
         computed: computeStyles(rules, { filter: ctx.filter }),
       };
     },
-  }
+  },
 );
 
 const diffLayers = (prevLayers: string[], nextLayers: string[]) => {

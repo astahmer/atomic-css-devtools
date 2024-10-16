@@ -163,7 +163,7 @@ export const evaluator: Evaluator = {
     return evalFn(
       // @ts-expect-error https://developer.chrome.com/docs/devtools/console/utilities/#copy-function
       (value: string) => window.copy(value),
-      valueToCopy
+      valueToCopy,
     );
   },
   inspect: inspect,
@@ -173,7 +173,7 @@ export const evaluator: Evaluator = {
       cb(result ?? null);
     };
     browser.devtools.panels.elements.onSelectionChanged.addListener(
-      handleSelectionChanged
+      handleSelectionChanged,
     );
 
     if (browser.devtools.panels.themeName === "dark") {
@@ -184,7 +184,7 @@ export const evaluator: Evaluator = {
 
     return () => {
       browser.devtools.panels.elements.onSelectionChanged.removeListener(
-        handleSelectionChanged
+        handleSelectionChanged,
       );
     };
   },

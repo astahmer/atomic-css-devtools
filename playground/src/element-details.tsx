@@ -83,25 +83,25 @@ const tagStyle = css({
 
 const classStyle = css({
   color: "green",
+  textOverflow: "ellipsis",
   fontSize: "11px",
   fontWeight: "bold",
   overflow: "hidden",
-  textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 });
 
 const itemStyle = css({
   display: "flex",
-  justifyContent: "space-between",
   gap: "4",
+  justifyContent: "space-between",
   paddingY: "2px",
 });
 
 const colorPreviewStyle = css({
+  display: "inline-block",
+  border: "1px solid #ddd",
   width: "16px",
   height: "16px",
-  border: "1px solid #ddd",
-  display: "inline-block",
-  verticalAlign: "middle",
   marginRight: "5px",
+  verticalAlign: "middle",
 });

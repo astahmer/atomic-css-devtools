@@ -17,21 +17,24 @@ export const DeclarationGroup = (props: DeclarationGroupProps) => {
       <Collapsible.Root defaultOpen>
         <Collapsible.Trigger asChild>
           <styled.div
-            role="button"
             className={cx(flex(), "group-btn")}
-            cursor="pointer"
-            w="100%"
+            role="button"
             alignItems="center"
+            w="100%"
+            ml="3px"
+            mb="3px"
             fontSize="11px"
             opacity={{ base: 0.7, _hover: 1 }}
+            cursor="pointer"
             _hover={{
               backgroundColor: "devtools.state-hover-on-subtle",
             }}
-            ml="3px"
-            mb="3px"
           >
             <span
               className={css({
+                w: "12px",
+                h: "12px",
+                cursor: "pointer",
                 _before: {
                   content: {
                     base: "'▶︎'",
@@ -39,9 +42,6 @@ export const DeclarationGroup = (props: DeclarationGroupProps) => {
                     ".group-btn[aria-expanded=true] &": "'▼'",
                   },
                 },
-                w: "12px",
-                h: "12px",
-                cursor: "pointer",
               })}
             />
             <styled.span

@@ -16,7 +16,7 @@ browser.runtime.onMessage.addListener(
       context: "devtools",
       tabId: null as any,
     });
-  }
+  },
 );
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -25,5 +25,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <SidebarPane />
     </DevtoolsProvider>
     <WithPlatformClass />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

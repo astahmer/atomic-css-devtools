@@ -36,7 +36,7 @@ test("insert at index 0", () => {
       atIndex: 0,
       isCommented: false,
       mode: "insert",
-    })
+    }),
   ).toMatchInlineSnapshot(`" display: flex; color: red; margin: 10px;"`);
 });
 
@@ -49,7 +49,7 @@ test("insert at index 1", () => {
       atIndex: 1,
       isCommented: false,
       mode: "insert",
-    })
+    }),
   ).toMatchInlineSnapshot(`" color: red; display: flex; margin: 10px;"`);
 });
 
@@ -62,7 +62,7 @@ test("insert at index 2", () => {
       atIndex: 2,
       isCommented: false,
       mode: "insert",
-    })
+    }),
   ).toMatchInlineSnapshot(`" color: red; margin: 10px; display: flex;"`);
 });
 
@@ -75,7 +75,7 @@ test("insert at index 3", () => {
       atIndex: 2,
       isCommented: false,
       mode: "insert",
-    })
+    }),
   ).toMatchInlineSnapshot(`" color: red; margin: 10px; display: flex;"`);
 });
 
@@ -88,7 +88,7 @@ test("edit at index 0", () => {
       atIndex: 0,
       isCommented: false,
       mode: "edit",
-    })
+    }),
   ).toMatchInlineSnapshot(`" display: flex; margin: 10px;"`);
 });
 
@@ -101,7 +101,7 @@ test("edit at index 1", () => {
       atIndex: 1,
       isCommented: false,
       mode: "edit",
-    })
+    }),
   ).toMatchInlineSnapshot(`" color: red; display: flex;"`);
 });
 
@@ -114,7 +114,7 @@ test("edit at index 2", () => {
       atIndex: 2,
       isCommented: false,
       mode: "edit",
-    })
+    }),
   ).toMatchInlineSnapshot(`" color: red; margin: 10px; display: flex;"`);
 });
 
@@ -127,6 +127,6 @@ test("edit at index 3", () => {
       atIndex: 2,
       isCommented: false,
       mode: "edit",
-    })
+    }),
   ).toMatchInlineSnapshot(`" color: red; margin: 10px; display: flex;"`);
 });

@@ -84,7 +84,7 @@ function getQueryLength(query: string) {
 function _testQuery(
   doubleTestTrue: RegExp,
   doubleTestFalse: RegExp,
-  singleTest: RegExp
+  singleTest: RegExp,
 ) {
   /**
    * @param {string} query

@@ -165,7 +165,7 @@ const VALUE = "\\s*([-+]?\\d+%?)\\s*";
 const ALPHA = "(?:,\\s*([-+]?(?:(?:\\d+(?:.\\d+)?)|(?:.\\d+))\\s*))?";
 const SUFFIX = "\\)$";
 const RGB_HSL_PATTERN = new RegExp(
-  PREFIX + VALUE + "," + VALUE + "," + VALUE + ALPHA + SUFFIX
+  PREFIX + VALUE + "," + VALUE + "," + VALUE + ALPHA + SUFFIX,
 );
 
 const NUM_TYPE = 1;

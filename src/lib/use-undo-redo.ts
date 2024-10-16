@@ -30,7 +30,7 @@ export function useUndoRedo<T>(initialState: T) {
   const redo = (cb?: (prev: T, next: T) => void) => {
     const newIndex = Math.min(
       indexRef.current + 1,
-      historyRef.current.length - 1
+      historyRef.current.length - 1,
     );
     if (newIndex !== indexRef.current) {
       cb?.(historyRef.current[indexRef.current], historyRef.current[newIndex]);

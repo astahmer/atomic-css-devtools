@@ -19,7 +19,7 @@ import { sortAtRules } from "./sort-at-rules";
  */
 const getAncestor = <TRule extends MatchedRule>(
   from: MatchedRule,
-  predicate: (rule: MatchedRule) => rule is TRule
+  predicate: (rule: MatchedRule) => rule is TRule,
 ) => {
   let current = from.parentRule;
   while (current) {
@@ -99,7 +99,7 @@ interface ComputeStylesOptions {
  */
 export const computeStyles = (
   rules: MatchedRule[],
-  options: ComputeStylesOptions = {}
+  options: ComputeStylesOptions = {},
 ) => {
   const { sortImplicitFirst = false, filter } = options;
 
@@ -109,7 +109,7 @@ export const computeStyles = (
   const mediaList = new Set<string>(
     rules
       .filter((r) => r.type === "style" && r.media)
-      .map((r) => r.type === "style" && r.media) as string[]
+      .map((r) => r.type === "style" && r.media) as string[],
   );
   const mediaOrder = Array.from(mediaList)
     .sort((a, b) => sortAtRules(a, b))
@@ -160,7 +160,7 @@ export const computeStyles = (
   const updated = pick(visibleStyles, keys.pick);
 
   const rulesInMedia = new Map<string, Array<StyleRuleWithProp>>(
-    mediaOrder.map((media) => [media, []])
+    mediaOrder.map((media) => [media, []]),
   );
   order.forEach((prop) => {
     const rule = visibleRuleByProp[prop];
@@ -171,7 +171,7 @@ export const computeStyles = (
   });
 
   const rulesByLayer = new Map<string, Array<StyleRuleWithProp>>(
-    sortImplicitFirst ? [[symbols.implicitOuterLayer, []]] : undefined
+    sortImplicitFirst ? [[symbols.implicitOuterLayer, []]] : undefined,
   );
   order.forEach((prop) => {
     const rule = visibleRuleByProp[prop];
@@ -192,7 +192,7 @@ export const computeStyles = (
             new Map(mediaOrder.map((media) => [media, []])),
           ],
         ]
-      : undefined
+      : undefined,
   );
   order.forEach((prop) => {
     const rule = visibleRuleByProp[prop];
@@ -234,7 +234,7 @@ export const computeStyles = (
  */
 const isRuleApplied = (
   styleRule: MatchedRule,
-  env: InspectResult["env"]
+  env: InspectResult["env"],
 ): boolean => {
   if (!styleRule.parentRule) return true;
   if (styleRule.type === "media") {
@@ -249,7 +249,7 @@ const isRuleApplied = (
 
 export const filterMatchedRulesByEnv = (
   rules: MatchedRule[],
-  env: InspectResult["env"]
+  env: InspectResult["env"],
 ) => {
   return Array.from(rules).filter((rule) => {
     if (!isRuleApplied(rule, env)) {

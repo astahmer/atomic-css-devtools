@@ -35,13 +35,13 @@ export const onContentScriptMessage = new Proxy<DevtoolsExtensionApi>(
         });
       };
     },
-  }
+  },
 );
 
 const listeners = new Map<string, () => void>();
 export const onDevtoolEvent: DevtoolsContextValue["onDevtoolEvent"] = (
   event,
-  cb
+  cb,
 ) => {
   listeners.set(event, cb);
 };

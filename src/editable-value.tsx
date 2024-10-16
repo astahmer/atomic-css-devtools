@@ -81,7 +81,7 @@ export const EditableValue = (props: EditableValueProps) => {
         selectors: elementSelector,
         prop,
         atIndex: index,
-      }
+      },
     );
 
     if (!hasUpdated) return;
@@ -111,11 +111,11 @@ export const EditableValue = (props: EditableValueProps) => {
 
   return (
     <Editable.Root
+      className={css({ display: "flex", alignItems: "center" })}
       key={key}
       autoResize
       selectOnFocus
       value={propValue}
-      className={css({ display: "flex", alignItems: "center" })}
       activationMode="focus"
       placeholder={propValue}
       onValueCommit={(update) => {
@@ -124,21 +124,21 @@ export const EditableValue = (props: EditableValueProps) => {
     >
       <Editable.Area ref={ref}>
         <Editable.Input
-          defaultValue={propValue}
-          onBlur={() => setKey((key) => key + 1)}
           className={css({
+            margin: "0 -2px -1px!",
+            padding: "0 2px 1px!",
+            textOverflow: "clip!",
+            opacity: "100%!",
+            backgroundColor: "devtools.neutral15",
             // boxShadow: "var(--drop-shadow)",
             boxShadow:
               "0 0 0 1px rgb(255 255 255/20%),0 2px 4px 2px rgb(0 0 0/20%),0 2px 6px 2px rgb(0 0 0/10%)!",
-            backgroundColor: "devtools.neutral15",
-            textOverflow: "clip!",
-            margin: "0 -2px -1px!",
-            padding: "0 2px 1px!",
-            opacity: "100%!",
             _selection: {
               backgroundColor: "devtools.tonal-container",
             },
           })}
+          defaultValue={propValue}
+          onBlur={() => setKey((key) => key + 1)}
           aria-label="Property value"
         />
         <EditablePreview />
@@ -146,16 +146,16 @@ export const EditableValue = (props: EditableValueProps) => {
       {isRemovable && (
         <Tooltip
           content={
-            <styled.div fontSize="10px" lineHeight="1.2" gap="1">
+            <styled.div gap="1" fontSize="10px" lineHeight="1.2">
               <span>Remove</span>
             </styled.div>
           }
         >
           <TrashIcon
             className={css({
-              ml: "4px",
               w: "10px",
               h: "10px",
+              ml: "4px",
               opacity: { base: 0.5, _hover: 1 },
               cursor: "pointer",
             })}
@@ -168,7 +168,7 @@ export const EditableValue = (props: EditableValueProps) => {
       {override !== null && (
         <Tooltip
           content={
-            <styled.div fontSize="10px" lineHeight="1.2" gap="1">
+            <styled.div gap="1" fontSize="10px" lineHeight="1.2">
               <span>Revert to default</span>
               <span>({matchValue})</span>
             </styled.div>
@@ -176,9 +176,9 @@ export const EditableValue = (props: EditableValueProps) => {
         >
           <Undo2
             className={css({
-              ml: "4px",
               w: "10px",
               h: "10px",
+              ml: "4px",
               opacity: { base: 0.5, _hover: 1 },
               cursor: "pointer",
             })}

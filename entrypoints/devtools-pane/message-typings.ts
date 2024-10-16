@@ -32,7 +32,7 @@ interface BridgeMessage<T> {
   timestamp: number;
 }
 type OnMessageCallback<T, R = void | JsonValue> = (
-  message: BridgeMessage<T>
+  message: BridgeMessage<T>,
 ) => R | Promise<R>;
 
 // from type-fest 2.19 (version of type-fest that is used in webext-bridge)

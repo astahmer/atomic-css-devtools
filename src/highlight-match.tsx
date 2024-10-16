@@ -30,11 +30,11 @@ export const HighlightMatch = ({
 
         return isMatching ? (
           <styled.mark
+            key={index}
             color={variant === "blue" ? "currentColor" : undefined}
             backgroundColor={
               variant === "blue" ? "devtools.tonal-container" : undefined
             }
-            key={index}
             css={css}
           >
             {part}

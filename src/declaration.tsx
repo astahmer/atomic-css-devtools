@@ -30,12 +30,12 @@ interface DeclarationProps
 }
 
 export const checkboxStyles = css.raw({
-  fontSize: "10px",
   width: "13px",
   height: "13px",
   px: "4px",
-  accentColor: "devtools.primary-bright",
   color: "devtools.on-primary",
+  accentColor: "devtools.primary-bright",
+  fontSize: "10px",
 });
 
 export const Declaration = (props: DeclarationProps) => {
@@ -81,14 +81,14 @@ export const Declaration = (props: DeclarationProps) => {
 
   return (
     <styled.code
+      data-declaration={index}
       display="flex"
       alignItems="flex-start"
       mr="2"
-      _hover={{ backgroundColor: "devtools.state-hover-on-subtle" }}
       textDecoration={
         !enabled || hasLineThrough ? "line-through !important" : "none"
       }
-      data-declaration={index}
+      _hover={{ backgroundColor: "devtools.state-hover-on-subtle" }}
     >
       <input
         id={id}
@@ -96,8 +96,8 @@ export const Declaration = (props: DeclarationProps) => {
         checked={enabled}
         className={css({
           ...checkboxStyles,
-          opacity: isTogglable ? "1" : "0!",
           visibility: "hidden",
+          opacity: isTogglable ? "1" : "0!",
           _groupHover: {
             visibility: "visible",
             opacity: 1,
@@ -144,13 +144,13 @@ export const Declaration = (props: DeclarationProps) => {
       {/* TODO editable property */}
 
       <styled.label
-        htmlFor={id}
-        pl="4px"
         className={css({
           color: "devtools.token-property-special",
         })}
-        whiteSpace="nowrap"
+        htmlFor={id}
         aria-label="Property name"
+        pl="4px"
+        whiteSpace="nowrap"
       >
         <HighlightMatch highlight={filter}>
           {hypenateProperty(prop)}
@@ -184,16 +184,16 @@ export const Declaration = (props: DeclarationProps) => {
             />
           )}
           <styled.div
-            alignSelf="center"
+            style={{ backgroundColor: computedValue }}
+            aria-label="Color preview"
             display="inline-block"
-            borderWidth="1px"
-            borderStyle="solid"
+            alignSelf="center"
             borderColor="devtools.neutral-outline"
+            borderWidth="1px"
             width="9.6px"
             height="9.6px"
             mx="4px"
-            style={{ backgroundColor: computedValue }}
-            aria-label="Color preview"
+            borderStyle="solid"
           />
         </label>
       )}
@@ -219,13 +219,13 @@ export const Declaration = (props: DeclarationProps) => {
             // Restore textDecoration on close
             onOpenChange={(details) => {
               const tooltipTrigger = document.querySelector(
-                `[data-tooltipid="trigger${prop + index}" ]`
+                `[data-tooltipid="trigger${prop + index}" ]`,
               ) as HTMLElement;
               if (!tooltipTrigger) return;
 
               if (details.open) {
                 const tooltipContent = document.querySelector(
-                  `[data-tooltipid="content${prop + index}" ]`
+                  `[data-tooltipid="content${prop + index}" ]`,
                 )?.parentElement as HTMLElement;
                 if (!tooltipContent) return;
 
@@ -242,14 +242,14 @@ export const Declaration = (props: DeclarationProps) => {
             <TooltipPrimitive.Trigger asChild>
               <styled.span
                 data-tooltipid={`trigger${prop}` + index}
+                aria-label="Computed value"
+                maxWidth="130px"
                 ml="11px"
+                textOverflow="ellipsis"
                 fontSize="10px"
                 opacity="0.7"
-                textOverflow="ellipsis"
                 overflow="hidden"
                 whiteSpace="nowrap"
-                maxWidth="130px"
-                aria-label="Computed value"
               >
                 {computedValue}
               </styled.span>
@@ -260,7 +260,7 @@ export const Declaration = (props: DeclarationProps) => {
                   // Only show tooltip if text is overflowing
                   ref={(node) => {
                     const tooltipTrigger = document.querySelector(
-                      `[data-tooltipid="trigger${prop + index}" ]`
+                      `[data-tooltipid="trigger${prop + index}" ]`,
                     ) as HTMLElement;
                     if (!tooltipTrigger) return;
 
@@ -292,9 +292,9 @@ export const Declaration = (props: DeclarationProps) => {
         )}
       {showSelector && (
         <styled.div
-          ml="auto"
-          gap="2"
           className={css({ display: "none", "@/md": { display: "flex" } })}
+          gap="2"
+          ml="auto"
         >
           <Tooltip
             positioning={{ placement: "left" }}
@@ -323,19 +323,6 @@ export const Declaration = (props: DeclarationProps) => {
             }
           >
             <styled.span
-              maxWidth={{
-                base: "150px",
-                sm: "200px",
-                md: "300px",
-              }}
-              textOverflow="ellipsis"
-              overflow="hidden"
-              whiteSpace="nowrap"
-              opacity="0.7"
-              // cursor="pointer"
-              textDecoration={{
-                _hover: "underline",
-              }}
               onClick={async () => {
                 await evaluator.copy(prettySelector);
               }}
@@ -360,6 +347,19 @@ export const Declaration = (props: DeclarationProps) => {
                 // Clear highlights
                 contentScript.highlightSelector({ selectors: [] });
               }}
+              maxWidth={{
+                base: "150px",
+                sm: "200px",
+                md: "300px",
+              }}
+              // cursor="pointer"
+              textDecoration={{
+                _hover: "underline",
+              }}
+              textOverflow="ellipsis"
+              opacity="0.7"
+              overflow="hidden"
+              whiteSpace="nowrap"
             >
               <HighlightMatch highlight={filter}>
                 {prettySelector}

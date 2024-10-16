@@ -26,7 +26,7 @@ import { Toolbar } from "./toolbar";
 import type { HistoryState } from "./devtools-types";
 
 const EmptyState = () => (
-  <Center px="4" h="100%">
+  <Center h="100%" px="4">
     <Stack textStyle="2xl" fontFamily="sans-serif">
       Select an element in the element panel
     </Stack>
@@ -90,36 +90,36 @@ export function SidebarPane() {
     <Box
       w="100%"
       h="100%"
-      backgroundColor="devtools.cdt-base-container"
       color="devtools.on-surface"
+      backgroundColor="devtools.cdt-base-container"
       overflow="auto"
     >
       <Collapsible.Root
-        open={isExpanded}
         className={css({
-          position: "sticky",
-          backgroundColor: "devtools.base-container",
-          top: "0",
-          transform: "translateY(-3px)",
-          marginTop: "-3px",
-          overflow: "hidden",
-          zIndex: 1,
           display: "flex",
+          zIndex: 1,
+          position: "sticky",
+          top: "0",
           flexDirection: "column",
+          marginTop: "-3px",
+          backgroundColor: "devtools.base-container",
+          transform: "translateY(-3px)",
+          overflow: "hidden",
         })}
+        open={isExpanded}
       >
         <Toolbar inspected={inspected} refresh={refresh} computed={computed} />
         <Collapsible.Content
           className={css({
-            px: "3px",
             display: !isExpanded ? "none" : undefined,
+            px: "3px",
           })}
         >
           <Wrap gap="2" alignItems="center" mb="2px">
             {availableLayers.map((layer) => {
               if (layer === symbols.implicitOuterLayer) return null;
               return (
-                <HStack gap="2px" alignItems="center" key={layer}>
+                <HStack key={layer} gap="2px" alignItems="center">
                   <input
                     key={layer}
                     type="checkbox"
@@ -151,13 +151,13 @@ export function SidebarPane() {
 
       <styled.hr opacity="0.2" />
       <Flex
-        direction="column"
+        className={cq({ name: "rules", type: "inline-size" })}
         textStyle="sm"
+        direction="column"
+        py="2px"
         fontFamily="monospace"
         fontSize="11px"
         lineHeight="1.2"
-        py="2px"
-        className={cq({ name: "rules", type: "inline-size" })}
       >
         <InsertInlineRow
           inspected={inspected}
@@ -190,7 +190,7 @@ export function SidebarPane() {
                           }
                         />
                       );
-                    }
+                    },
                   )}
                 </Stack>
               );
@@ -304,15 +304,15 @@ export function SidebarPane() {
           .exhaustive()}
         {!hasMatches && (
           <Center
-            fontStyle="italic"
+            borderBottom="1px solid #474747ff"
+            p="4px"
+            color="devtools.token-subtle"
+            textAlign="center"
+            fontFamily="system-ui, sans-serif"
             fontSize="12px"
             lineHeight="auto"
-            fontFamily="system-ui, sans-serif"
-            p="4px"
-            textAlign="center"
+            fontStyle="italic"
             whiteSpace="nowrap"
-            borderBottom="1px solid #474747ff"
-            color="devtools.token-subtle"
           >
             <span>No matching selector or style</span>
           </Center>

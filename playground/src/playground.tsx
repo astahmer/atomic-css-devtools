@@ -27,20 +27,20 @@ function Playground() {
           <HStack>
             <div
               className={css({
-                fontSize: "4xl",
-                color: "yellow.500",
                 my: "4",
                 p: "4",
+                color: "yellow.500",
+                fontSize: "4xl",
               })}
             >
               Atomic CSS Devtools
             </div>
             <div
               className={css({
-                fontSize: "4xl",
                 p: "4",
-                backgroundColor: "purple.400",
                 color: "white",
+                fontSize: "4xl",
+                backgroundColor: "purple.400",
                 cursor: "pointer",
               })}
               onClick={() => {
@@ -53,9 +53,9 @@ function Playground() {
           <HStack>
             <button
               className={css({
-                backgroundColor: "blue.400",
-                color: "white",
                 p: "4",
+                color: "white",
+                backgroundColor: "blue.400",
                 cursor: "pointer",
                 _hover: {
                   backgroundColor: "blue.500",

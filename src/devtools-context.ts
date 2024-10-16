@@ -19,7 +19,7 @@ export interface Evaluator {
   copy: (valueToCopy: string) => Promise<void>;
   inspect: () => Promise<InspectResult | null | undefined>;
   onSelectionChanged: (
-    cb: (element: InspectResult | null) => void
+    cb: (element: InspectResult | null) => void,
   ) => () => void;
 }
 
@@ -27,7 +27,7 @@ export interface DevtoolsContextValue {
   evaluator: Evaluator;
   onDevtoolEvent: (
     event: "devtools-shown" | "devtools-hidden",
-    cb: () => void
+    cb: () => void,
   ) => void;
   contentScript: ContentScriptApi;
   onContentScriptMessage: DevtoolsListeners;

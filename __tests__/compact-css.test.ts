@@ -9,7 +9,7 @@ test("removes longhands when same value as shorthands", () => {
       paddingRight: "0px",
       paddingBottom: "0px",
       paddingLeft: "0px",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [
@@ -39,7 +39,7 @@ test("removes longhands when same value as shorthands - multiple", () => {
       marginRight: "0px",
       marginBottom: "0px",
       marginLeft: "0px",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [
@@ -74,7 +74,7 @@ test("removes shorthands when different value in one of the longhands", () => {
       marginRight: "0px",
       marginBottom: "0px",
       marginLeft: "0px",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [
@@ -111,7 +111,7 @@ test("keeps other keys", () => {
       marginRight: "0px",
       marginBottom: "0px",
       marginLeft: "0px",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [
@@ -141,7 +141,7 @@ test("works with partial longhands", () => {
       padding: "0px",
       paddingBottom: "0px",
       paddingLeft: "0px",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [
@@ -163,7 +163,7 @@ test("add both longhands and shorthands if not all longhands are in the styles a
     compactCSS({
       overflowX: "hidden",
       overflow: "auto",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [],
@@ -178,7 +178,7 @@ test("add both longhands and shorthands if not all longhands are in the styles a
     compactCSS({
       overflow: "auto",
       overflowY: "hidden",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [],
@@ -193,7 +193,7 @@ test("add both longhands and shorthands if not all longhands are in the styles a
     compactCSS({
       overflow: "auto",
       overflowY: "auto",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [
@@ -216,7 +216,7 @@ test("works in any order", () => {
       padding: "0px",
       overflow: "auto",
       paddingLeft: "0px",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [
@@ -242,7 +242,7 @@ test("add shorthand if all longhands are in the styles and none differs from the
       paddingRight: "0px",
       paddingTop: "0px",
       paddingBottom: "0px",
-    })
+    }),
   ).toMatchInlineSnapshot(`
     {
       "omit": [

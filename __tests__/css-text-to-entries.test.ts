@@ -43,7 +43,7 @@ test("works without space", () => {
 
 test("works with multiple comma", () => {
   expect(
-    cssTextToEntries(" color: green;; color: blue; color: red; color: yellow;")
+    cssTextToEntries(" color: green;; color: blue; color: red; color: yellow;"),
   ).toMatchInlineSnapshot(`
     [
       [
@@ -69,8 +69,8 @@ test("works with multiple comma", () => {
 test("extracts commented declarations", () => {
   expect(
     cssTextToEntries(
-      " color: green;; color: blue;/* color: orange; */ color: red; /* color: amber; */color: yellow;/* color: pink; */" //
-    )
+      " color: green;; color: blue;/* color: orange; */ color: red; /* color: amber; */color: yellow;/* color: pink; */", //
+    ),
   ).toMatchInlineSnapshot(`
     [
       [

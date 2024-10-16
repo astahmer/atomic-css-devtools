@@ -43,7 +43,7 @@ export class InspectAPI {
           console.error(
             "No shadow root available for selector:",
             selector,
-            currentContext
+            currentContext,
           );
           return null;
         }
@@ -52,13 +52,13 @@ export class InspectAPI {
         currentContext = currentContext.contentDocument as Document;
         if (currentContext) {
           currentContext = currentContext.querySelector(
-            selector
+            selector,
           ) as HTMLElement;
         } else {
           console.error(
             "Content document not accessible in iframe for selector:",
             selector,
-            currentContext
+            currentContext,
           );
           return null;
         }
@@ -79,14 +79,14 @@ export class InspectAPI {
           console.error(
             "Element not found at selector:",
             selector,
-            currentContext
+            currentContext,
           );
           return null; // Element not found at this selector, exit early
         }
       } else {
         console.error(
           "Current context is neither Document, Element, nor ShadowRoot:",
-          currentContext
+          currentContext,
         );
         return null;
       }
@@ -124,7 +124,10 @@ export class InspectAPI {
        * including stuff we don't care about
        */
       computedStyle: Object.fromEntries(
-        Array.from(computed).map((key) => [key, computed.getPropertyValue(key)])
+        Array.from(computed).map((key) => [
+          key,
+          computed.getPropertyValue(key),
+        ]),
       ),
       /**
        * This contains only the applied `style` attributes as an array of [property, value] pairs
@@ -246,7 +249,7 @@ export class InspectAPI {
               } else if (asserts.isCSSLayerBlockRule(rule)) {
                 seenLayers.add(getLayerBlockFullName(rule));
               }
-            }
+            },
           );
 
           if (matchingRules.length > 0) {
@@ -307,7 +310,7 @@ export class InspectAPI {
 
       const rule = this.findStyleRuleBySelector(
         Array.from(sheet.cssRules),
-        selector
+        selector,
       );
 
       if (rule) {
@@ -358,7 +361,7 @@ export class InspectAPI {
     if (hasUpdated) {
       computedValue = inspectApi.computePropertyValue(
         params.selectors,
-        params.prop
+        params.prop,
       );
     }
 
@@ -384,7 +387,7 @@ export class InspectAPI {
 
     const computedValue = inspectApi.computePropertyValue(
       params.selectors,
-      params.prop
+      params.prop,
     );
 
     return {
@@ -435,7 +438,7 @@ export class InspectAPI {
 
   removeInlineStyleAction(
     params: RemoveInlineStyle &
-      Pick<UpdateStyleRuleMessage, "selectors" | "prop">
+      Pick<UpdateStyleRuleMessage, "selectors" | "prop">,
   ) {
     const element = inspectApi.traverseSelectors(params.selectors);
     if (!element) return { hasUpdated: false, computedValue: null };
@@ -448,7 +451,7 @@ export class InspectAPI {
 
     const computedValue = inspectApi.computePropertyValue(
       params.selectors,
-      params.prop
+      params.prop,
     );
 
     return {
@@ -458,7 +461,7 @@ export class InspectAPI {
   }
 
   removeInlineStyleDeclaration(
-    params: RemoveInlineStyle & { element: HTMLElement }
+    params: RemoveInlineStyle & { element: HTMLElement },
   ) {
     const { element, atIndex } = params;
     if (element) {
@@ -528,7 +531,7 @@ export class InspectAPI {
     });
 
     let container = document.querySelector(
-      "[data-selector-highlighted-container]"
+      "[data-selector-highlighted-container]",
     );
     if (!container) {
       container = document.createElement("div") as HTMLElement;
@@ -656,7 +659,7 @@ export class InspectAPI {
   private findMatchingRules(
     rules: CSSRule[],
     element: Element,
-    cb: (rule: CSSRule) => void
+    cb: (rule: CSSRule) => void,
   ) {
     let matchingRules: Array<CSSStyleRule | CSSMediaRule | CSSLayerBlockRule> =
       [];
@@ -671,7 +674,7 @@ export class InspectAPI {
         asserts.isCSSLayerBlockRule(rule)
       ) {
         matchingRules = matchingRules.concat(
-          this.findMatchingRules(Array.from(rule.cssRules), element, cb)
+          this.findMatchingRules(Array.from(rule.cssRules), element, cb),
         );
       }
     }
@@ -684,7 +687,7 @@ export class InspectAPI {
    */
   private findStyleRuleBySelector(
     rules: CSSRule[],
-    selector: string
+    selector: string,
   ): CSSStyleRule | undefined {
     for (const cssRule of rules) {
       if (asserts.isCSSStyleRule(cssRule)) {
@@ -699,7 +702,7 @@ export class InspectAPI {
       ) {
         const styleRule = this.findStyleRuleBySelector(
           Array.from(cssRule.cssRules),
-          selector
+          selector,
         );
         if (styleRule) {
           return styleRule;

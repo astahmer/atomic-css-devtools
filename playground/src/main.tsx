@@ -6,5 +6,5 @@ import "./panda.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Playground />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

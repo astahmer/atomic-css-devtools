@@ -12,18 +12,18 @@ const styles = sva({
   base: {
     positioner: {
       display: "flex",
-      "--arrow-background": "colors.devtools.cdt-base-container",
+      borderRadius: "2px",
+      color: "devtools.on-surface",
+      fontSize: "12px",
+      lineHeight: "11px",
       backgroundColor: "var(--arrow-background)",
+      userSelect: "text",
+      "--arrow-background": "colors.devtools.cdt-base-container",
       "--drop-shadow":
         "0 0 0 1px rgb(255 255 255/20%),0 2px 4px 2px rgb(0 0 0/20%),0 2px 6px 2px rgb(0 0 0/10%)",
       "&:has([data-state=open])": {
         boxShadow: "var(--drop-shadow)",
       },
-      borderRadius: "2px",
-      userSelect: "text",
-      fontSize: "12px",
-      lineHeight: "11px",
-      color: "devtools.on-surface",
     },
     content: {
       padding: "11px 7px",
@@ -40,7 +40,7 @@ export const Root = withProvider(ArkTooltip.Root);
 export const Content = withContext(styled(ArkTooltip.Content), "content");
 export const Positioner = withContext(
   styled(ArkTooltip.Positioner),
-  "positioner"
+  "positioner",
 );
 export const Trigger = withContext(styled(ArkTooltip.Trigger), "trigger");
 export const Arrow = withContext(styled(ArkTooltip.Arrow), "arrow");
@@ -76,10 +76,10 @@ export const Tooltip = (props: TooltipProps) => {
       <Portallish>
         <Positioner>
           <Content
-            maxW="var(--available-width)"
             // animation="unset"
             display="flex"
             flexDirection="column"
+            maxW="var(--available-width)"
           >
             {content}
             {withArrow && (

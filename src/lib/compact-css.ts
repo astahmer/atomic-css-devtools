@@ -16,7 +16,7 @@ export function compactCSS(styles: Record<string, any>) {
 
   props.forEach((prop) => {
     let shorthand = Boolean(
-      shorthandProperties[prop as keyof typeof shorthandProperties]
+      shorthandProperties[prop as keyof typeof shorthandProperties],
     )
       ? prop
       : undefined;
@@ -50,13 +50,13 @@ export function compactCSS(styles: Record<string, any>) {
     const longhandsForShorthand =
       shorthandProperties[shorthand as keyof typeof shorthandProperties];
     const longhandsInProps = longhandsForShorthand.filter(
-      (longhand) => styles[longhand]
+      (longhand) => styles[longhand],
     );
 
     const shorthandValue = styles[shorthand!];
     const firstLonghandValue = styles[longhandsInProps[0]];
     const allEqual = longhandsInProps.every(
-      (longhand) => styles[longhand] === shorthandValue
+      (longhand) => styles[longhand] === shorthandValue,
     );
 
     if (longhandsForShorthand.length !== longhandsInProps.length && !allEqual) {
@@ -76,7 +76,7 @@ export function compactCSS(styles: Record<string, any>) {
       !shorthandValue &&
       longhandsForShorthand.length === longhandsInProps.length &&
       longhandsInProps.every(
-        (longhand) => styles[longhand] === firstLonghandValue
+        (longhand) => styles[longhand] === firstLonghandValue,
       )
     ) {
       // All longhand values are equal, but the shorthand is missing

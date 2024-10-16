@@ -5,7 +5,7 @@ import { store } from "../store";
 import { useDevtoolsContext } from "../devtools-context";
 
 export const useInspectedResult = (
-  cb?: (result: InspectResult | null) => void
+  cb?: (result: InspectResult | null) => void,
 ) => {
   const { evaluator, onDevtoolEvent, onContentScriptMessage } =
     useDevtoolsContext();
