@@ -2,7 +2,7 @@
 import { defineRunnerConfig } from "wxt";
 
 export default defineRunnerConfig({
-  startUrls: ["https://panda-css.com"],
+  startUrls: ["https://panda-css.com", "https://tailwindcss.com/"],
   //   chromiumArgs: ["--window-size=200x300", "--browser-console", "--devtools"],
   chromiumArgs: [
     "--browser-console",
