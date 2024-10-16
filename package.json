@@ -1,8 +1,8 @@
 {
   "name": "atomic-css-devtools",
-  "description": "manifest.json description",
+  "description": "A devtool panel for debugging Atomic CSS rules as if they were not atomic",
   "private": true,
-  "version": "0.0.8-dev",
+  "version": "0.0.9-dev",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -53,5 +53,11 @@
     "vite-plugin-inspect": "^0.8.3",
     "vitest": "^1.4.0",
     "wxt": "^0.17.0"
+  },
+  "author": "Alexandre Stahmer",
+  "homepage": "https://twitter.com/astahmer_dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/astahmer/atomic-css-devtools"
   }
 }
