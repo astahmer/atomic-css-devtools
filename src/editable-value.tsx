@@ -1,15 +1,15 @@
-import { Editable, useEditableContext } from "@ark-ui/react";
+import { Tooltip } from "#components/tooltip";
+import { css, cx } from "#styled-system/css";
+import { styled } from "#styled-system/jsx";
+import { Editable, Portal, useEditableContext } from "@ark-ui/react";
 import { useSelector } from "@xstate/store/react";
 import { TrashIcon, Undo2 } from "lucide-react";
 import { useRef, useState } from "react";
-import { css } from "#styled-system/css";
-import { styled } from "#styled-system/jsx";
-import { Tooltip } from "#components/tooltip";
+import { useDevtoolsContext } from "./devtools-context";
 import { HighlightMatch } from "./highlight-match";
 import { hypenateProperty } from "./lib/hyphenate-proprety";
 import { symbols } from "./lib/symbols";
 import { store } from "./store";
-import { useDevtoolsContext } from "./devtools-context";
 
 export interface EditableValueProps {
   index: number;
@@ -109,9 +109,19 @@ export const EditableValue = (props: EditableValueProps) => {
     }
   };
 
+  const parentRef = useRef<HTMLDivElement>(null);
+
   return (
     <Editable.Root
-      className={css({ display: "flex", alignItems: "center" })}
+      ref={parentRef}
+      className={cx(
+        "group",
+        css({
+          display: "flex",
+          justifyContent: "flex-start",
+          alignItems: "center",
+        }),
+      )}
       key={key}
       autoResize
       selectOnFocus
@@ -122,7 +132,7 @@ export const EditableValue = (props: EditableValueProps) => {
         overrideValue(update.value);
       }}
     >
-      <Editable.Area ref={ref}>
+      <Editable.Area ref={ref} className={css({ display: "flex" })}>
         <Editable.Input
           className={css({
             margin: "0 -2px -1px!",
@@ -141,7 +151,7 @@ export const EditableValue = (props: EditableValueProps) => {
           onBlur={() => setKey((key) => key + 1)}
           aria-label="Property value"
         />
-        <EditablePreview />
+        <EditablePreview parentRef={parentRef} />
       </Editable.Area>
       {isRemovable && (
         <Tooltip
@@ -188,12 +198,15 @@ export const EditableValue = (props: EditableValueProps) => {
           />
         </Tooltip>
       )}
-      <span>;</span>
     </Editable.Root>
   );
 };
 
-const EditablePreview = () => {
+const EditablePreview = ({
+  parentRef,
+}: {
+  parentRef: React.RefObject<HTMLSpanElement>;
+}) => {
   const ctx = useEditableContext();
   const filter = useSelector(store, (s) => s.context.filter);
 
@@ -202,6 +215,12 @@ const EditablePreview = () => {
       <HighlightMatch highlight={filter}>
         {ctx.previewProps.children}
       </HighlightMatch>
+      <Portal container={parentRef}>
+        <span className={css({ display: ctx.isEditing ? "contents" : "none" })}>
+          ;
+        </span>
+      </Portal>
+      {ctx.isEditing ? null : <span>;</span>}
     </span>
   );
 };
