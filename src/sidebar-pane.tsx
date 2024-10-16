@@ -92,7 +92,8 @@ export function SidebarPane() {
       h="100%"
       color="devtools.on-surface"
       backgroundColor="devtools.cdt-base-container"
-      overflow="auto"
+      overflowX="hidden"
+      overflowY="auto"
     >
       <Collapsible.Root
         className={css({
