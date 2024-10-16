@@ -23,4 +23,13 @@ export default defineConfig({
   outdir: "styled-system",
   jsxFramework: "react",
   // importMap: "styled-system",
+  hooks: {
+    'parser:before': ({ configure }) => {
+      configure({
+        // ignore the <Tooltip /> entirely,
+        // prevents: `🐼 error [sheet:process] > 1 | .content_Hide_\`\*\,_\:before\,_\:after\`_styles {content: Hide `*, :before, :after` styles;`
+        matchTag: tag => tag !== 'Tooltip',
+      })
+    }
+  }
 });
