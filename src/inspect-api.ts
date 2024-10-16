@@ -749,7 +749,8 @@ export class InspectAPI {
           // This is chrome, property will be a CSS property name here
           isNaN(property as any) && property.startsWith("--")
             ? true
-            : rule.style.hasOwnProperty(property) && rule.style[property]
+            : rule.style.hasOwnProperty(property) &&
+              rule.style[property as never]
         ) {
           const important = rule.style.getPropertyPriority(property);
           styles[property] =
