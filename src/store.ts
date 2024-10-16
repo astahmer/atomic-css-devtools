@@ -10,6 +10,7 @@ export const store = createStore(
     showSelector: true,
     groupByLayer: false,
     groupByMedia: false,
+    hideResetStyles: true,
     //
     isExpanded: false,
     selectedLayers: [] as string[],
@@ -47,6 +48,10 @@ export const store = createStore(
         groupByLayer: event.isExpanded ? true : ctx.groupByLayer,
       };
     },
+    setHideResetStyles: {
+      hideResetStyles: (_ctx, event: { hideResetStyles: boolean }) =>
+        event.hideResetStyles,
+    },
     setInspected: (ctx, event: { inspected: InspectResult | null }) => {
       if (!event.inspected) return { ...ctx, inspected: event.inspected };
 
@@ -55,7 +60,7 @@ export const store = createStore(
         ...ctx.env,
       });
 
-      const computed = computeStyles(rules, { filter: ctx.filter });
+      const computed = computeStyles(rules, { filter: ctx.filter,hideResetStyles: ctx.hideResetStyles });
       const availableLayers = Array.from(computed.rulesByLayer.keys());
       const sortedAvailableLayers = ctx.inspected?.layersOrder.length
         ? sortArrayByOrder(availableLayers, ctx.inspected?.layersOrder)
@@ -97,7 +102,7 @@ export const store = createStore(
         ...ctx,
         env: event.env,
         rules,
-        computed: computeStyles(rules, { filter: ctx.filter }),
+        computed: computeStyles(rules, { filter: ctx.filter, hideResetStyles: ctx.hideResetStyles }),
       };
     },
   },

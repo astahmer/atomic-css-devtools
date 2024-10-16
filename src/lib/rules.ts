@@ -89,6 +89,20 @@ export interface StyleRuleWithProp extends MatchedStyleRule {
 interface ComputeStylesOptions {
   sortImplicitFirst?: boolean;
   filter?: string;
+  hideResetStyles?: boolean
+}
+
+const resetSelectors = ['*, ::after, ::before', '*, :after, :before']
+const isMatchingSelector = (selector: string, patterns: string[]) => {
+  const shortcut = patterns.includes(selector)
+  if (shortcut) return true;
+
+  const trimmedPatterns = patterns.map(p => p.split(',').map(s => s.trim()));
+  const selectorTrimmedParts = selector.split(',').map(s => s.trim());
+
+  if (trimmedPatterns.some(patternParts => patternParts.every(part => selectorTrimmedParts.includes(part)))) return true;
+
+  return false;
 }
 
 /**
@@ -101,7 +115,7 @@ export const computeStyles = (
   rules: MatchedRule[],
   options: ComputeStylesOptions = {},
 ) => {
-  const { sortImplicitFirst = false, filter } = options;
+  const { sortImplicitFirst = false, filter, hideResetStyles } = options;
 
   const appliedRuleOrProp = {} as Record<string, StyleRuleWithProp>;
   const appliedStyles = {} as Record<string, string>;
@@ -123,6 +137,9 @@ export const computeStyles = (
   // console.log(rules);
   rules.forEach((rule) => {
     if (rule.type !== "style") return;
+    if (hideResetStyles && isMatchingSelector(rule.selector, resetSelectors)) {
+      return
+    }
 
     Object.keys(rule.style).forEach((key) => {
       insertOrder.push(key);

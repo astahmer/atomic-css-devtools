@@ -3,6 +3,8 @@ import { useSelector } from "@xstate/store/react";
 import {
   BoxSelectIcon,
   BugIcon,
+  EyeIcon,
+  EyeOffIcon,
   LayersIcon,
   MonitorSmartphone,
   RefreshCwIcon,
@@ -32,6 +34,7 @@ export const Toolbar = (props: ToolbarProps) => {
   const isExpanded = useSelector(store, (s) => s.context.isExpanded);
   const groupByLayer = useSelector(store, (s) => s.context.groupByLayer);
   const groupByMedia = useSelector(store, (s) => s.context.groupByMedia);
+  const hideResetStyles = useSelector(store, (s) => s.context.hideResetStyles);
   const availableLayers = useSelector(store, (s) => s.context.availableLayers);
   const selectedLayers = useSelector(store, (s) => s.context.selectedLayers);
 
@@ -110,6 +113,7 @@ export const Toolbar = (props: ToolbarProps) => {
                   groupByLayer,
                   availableLayers,
                   selectedLayers,
+                  hideResetStyles,
                 },
                 computed,
                 // api.state
@@ -124,6 +128,23 @@ export const Toolbar = (props: ToolbarProps) => {
         <ToolbarButton onClick={() => refresh()} aria-label="Refresh">
           <RefreshCwIcon className={toolbarIcon} />
         </ToolbarButton>
+      </Tooltip>
+      <Tooltip content="Hide `*, :before, :after` styles">
+        <Collapsible.Trigger asChild>
+          <ToolbarButton
+            aria-label="Hide `*, :before, :after` styles"
+            aria-selected={hideResetStyles}
+            onClick={() => {
+              store.send({
+                type: "setHideResetStyles",
+                hideResetStyles: !hideResetStyles,
+              });
+              refresh()
+            }}
+          >
+            {hideResetStyles ?  <EyeOffIcon className={toolbarIcon} /> : <EyeIcon className={toolbarIcon} />}
+          </ToolbarButton>
+        </Collapsible.Trigger>
       </Tooltip>
       <Tooltip
         content={
