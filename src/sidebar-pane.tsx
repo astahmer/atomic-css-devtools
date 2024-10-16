@@ -228,7 +228,7 @@ export function SidebarPane() {
                   {Array.from(computed.rulesByLayerInMedia.entries())
                     .filter(([layer]) => availableLayers.includes(layer))
                     .map(([layer, mediaMap]) => {
-                      const mediaKeys = Object.keys(mediaMap);
+                      const mediaKeys = Array.from((mediaMap).keys());
                       return (
                         <DeclarationGroup
                           key={layer}
@@ -243,6 +243,8 @@ export function SidebarPane() {
                             <Stack ml="12px">
                               {mediaKeys.map((media) => {
                                 const mediaRules = mediaMap.get(media)!;
+                                if (!mediaRules.length) return null;
+
                                 return (
                                   <DeclarationGroup
                                     key={media}
