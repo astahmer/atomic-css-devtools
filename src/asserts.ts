@@ -47,7 +47,10 @@ const isElement = (obj: any): obj is Element => {
 };
 
 const isHTMLIFrameElement = (obj: any): obj is HTMLIFrameElement => {
-  return obj.constructor.name === "HTMLIFrameElement";
+  return (
+    obj.constructor.name === "HTMLIFrameElement" ||
+    obj instanceof HTMLIFrameElement
+  );
 };
 
 const isDocument = (obj: any): obj is Document => {
