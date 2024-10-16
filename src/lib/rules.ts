@@ -89,21 +89,28 @@ export interface StyleRuleWithProp extends MatchedStyleRule {
 interface ComputeStylesOptions {
   sortImplicitFirst?: boolean;
   filter?: string;
-  hideResetStyles?: boolean
+  hideResetStyles?: boolean;
 }
 
-const resetSelectors = ['*, ::after, ::before', '*, :after, :before']
+const resetSelectors = ["*, ::after, ::before", "*, :after, :before"];
 const isMatchingSelector = (selector: string, patterns: string[]) => {
-  const shortcut = patterns.includes(selector)
+  const shortcut = patterns.includes(selector);
   if (shortcut) return true;
 
-  const trimmedPatterns = patterns.map(p => p.split(',').map(s => s.trim()));
-  const selectorTrimmedParts = selector.split(',').map(s => s.trim());
+  const trimmedPatterns = patterns.map((p) =>
+    p.split(",").map((s) => s.trim()),
+  );
+  const selectorTrimmedParts = selector.split(",").map((s) => s.trim());
 
-  if (trimmedPatterns.some(patternParts => patternParts.every(part => selectorTrimmedParts.includes(part)))) return true;
+  if (
+    trimmedPatterns.some((patternParts) =>
+      patternParts.every((part) => selectorTrimmedParts.includes(part)),
+    )
+  )
+    return true;
 
   return false;
-}
+};
 
 /**
  * Computes the final applied styles for a set of CSS rules
@@ -138,7 +145,7 @@ export const computeStyles = (
   rules.forEach((rule) => {
     if (rule.type !== "style") return;
     if (hideResetStyles && isMatchingSelector(rule.selector, resetSelectors)) {
-      return
+      return;
     }
 
     Object.keys(rule.style).forEach((key) => {
@@ -229,6 +236,7 @@ export const computeStyles = (
   });
 
   // console.log({
+  //   insertOrder, order,
   //   appliedRuleOrProp,
   //   appliedStyles,
   //   visibleStyles,

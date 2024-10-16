@@ -139,10 +139,14 @@ export const Toolbar = (props: ToolbarProps) => {
                 type: "setHideResetStyles",
                 hideResetStyles: !hideResetStyles,
               });
-              refresh()
+              refresh();
             }}
           >
-            {hideResetStyles ?  <EyeOffIcon className={toolbarIcon} /> : <EyeIcon className={toolbarIcon} />}
+            {hideResetStyles ? (
+              <EyeOffIcon className={toolbarIcon} />
+            ) : (
+              <EyeIcon className={toolbarIcon} />
+            )}
           </ToolbarButton>
         </Collapsible.Trigger>
       </Tooltip>

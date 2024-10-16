@@ -234,7 +234,7 @@ export function SidebarPane() {
                   {Array.from(computed.rulesByLayerInMedia.entries())
                     .filter(([layer]) => availableLayers.includes(layer))
                     .map(([layer, mediaMap]) => {
-                      const mediaKeys = Array.from((mediaMap).keys());
+                      const mediaKeys = Array.from(mediaMap.keys());
                       return (
                         <DeclarationGroup
                           key={layer}

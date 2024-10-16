@@ -60,7 +60,10 @@ export const store = createStore(
         ...ctx.env,
       });
 
-      const computed = computeStyles(rules, { filter: ctx.filter,hideResetStyles: ctx.hideResetStyles });
+      const computed = computeStyles(rules, {
+        filter: ctx.filter,
+        hideResetStyles: ctx.hideResetStyles,
+      });
       const availableLayers = Array.from(computed.rulesByLayer.keys());
       const sortedAvailableLayers = ctx.inspected?.layersOrder.length
         ? sortArrayByOrder(availableLayers, ctx.inspected?.layersOrder)
@@ -102,7 +105,10 @@ export const store = createStore(
         ...ctx,
         env: event.env,
         rules,
-        computed: computeStyles(rules, { filter: ctx.filter, hideResetStyles: ctx.hideResetStyles }),
+        computed: computeStyles(rules, {
+          filter: ctx.filter,
+          hideResetStyles: ctx.hideResetStyles,
+        }),
       };
     },
   },

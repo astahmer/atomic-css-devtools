@@ -588,7 +588,7 @@ export class InspectAPI {
         return cached;
       }
 
-      if (asserts.isCSSStyleRule(rule) || rule.type === rule.STYLE_RULE) {
+      if (asserts.isCSSStyleRule(rule)) {
         const matched: MatchedStyleRule = {
           type: "style",
           source: this.getRuleSource(rule),
@@ -732,16 +732,30 @@ export class InspectAPI {
    */
   private filterStyleDeclarations(rule: CSSStyleRule) {
     const styles = {} as Record<string, string>;
-    for (const property in rule.style) {
-      if (
-        isNaN(property as any) &&
-        (property.startsWith("--")
-          ? true
-          : rule.style.hasOwnProperty(property) && rule.style[property])
-      ) {
-        const important = rule.style.getPropertyPriority(property);
-        styles[property] =
-          rule.style[property] + (important ? " !" + important : "");
+
+    // Firefox needs a special treatment 🤷
+    if (import.meta.env.FIREFOX) {
+      for (const property of Object.keys(Object.getPrototypeOf(rule.style))) {
+        if (rule.style.getPropertyValue(property) !== "") {
+          const important = rule.style.getPropertyPriority(property);
+          styles[property] =
+            rule.style.getPropertyValue(property) +
+            (important ? " !" + important : "");
+        }
+      }
+    } else {
+      for (const property of rule.style) {
+        if (
+          // This is chrome, property will be a CSS property name here
+          isNaN(property as any) && property.startsWith("--")
+            ? true
+            : rule.style.hasOwnProperty(property) && rule.style[property]
+        ) {
+          const important = rule.style.getPropertyPriority(property);
+          styles[property] =
+            rule.style.getPropertyValue(property) +
+            (important ? " !" + important : "");
+        }
       }
     }
 
@@ -749,6 +763,7 @@ export class InspectAPI {
     // if (Object.keys(styles).length === 0) {
     //   console.log(rule);
     // }
+    // console.log(rule, styles)
     return styles;
   }
 }
