@@ -2,7 +2,7 @@
   "name": "atomic-css-devtools",
   "description": "A devtool panel for debugging Atomic CSS rules as if they were not atomic",
   "private": true,
-  "version": "0.0.9-dev",
+  "version": "0.0.10-dev",
   "type": "module",
   "scripts": {
     "dev": "wxt",
